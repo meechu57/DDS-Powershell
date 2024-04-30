@@ -7,6 +7,18 @@ switch ($env:scriptRunType) {
   Default { Write-Host "An error occurred when trying to set the log pathway. Setting the log path to the default." ; $logPath = "C:\DDS\Logs\Scripts.log" }
 }
 
+# Check if the script was run as the default System User
+function Test-IsSystem {
+  $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
+  return $id.Name -like "NT AUTHORITY*" -or $id.IsSystem
+}
+
+# If it was we'll error out and enform the technician they should run it as the "Current Logged on User"
+if (Test-IsSystem) {
+  Write-Host "This script does not work when ran as system. Use Run As: 'Current Logged on User'."
+  exit 1
+}
+
 Write-Host "Resetting the Eaglesoft AppData configuration folder..."
 Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Resetting the Eaglesoft AppData configuration folder..."
 
