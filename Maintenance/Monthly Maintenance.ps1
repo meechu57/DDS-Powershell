@@ -878,13 +878,7 @@ if ($usb.Value) {
     # Dynamic power devices
     $powerMgmt = Get-CimInstance -ClassName MSPower_DeviceEnable -Namespace root/WMI
   
-    # All USB devices
-    $usbDevices = Get-CimInstance -ClassName Win32_PnPEntity -Filter 'PNPClass = "USB"'
-  
-    $usbDevices | ForEach-Object {
-    # Get the power management instance for this device, if there is one.
-    $powerMgmt | Where-Object InstanceName -Like "*$($_.PNPDeviceID)*"
-    } | Set-CimInstance -Property @{Enable = $false}
+    $powerMgmt | Where-Object {$_.InstanceName -like "*USB*" -and $_.Enable -eq $true} | Set-CimInstance -Property @{Enable = $false}
   } catch {
     Write-Host "Failed to disable 'Allow the computer to turn off this device to save power' on all USB devices: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to disable 'Allow the computer to turn off this device to save power' on all USB devices: $_"
