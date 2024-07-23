@@ -647,8 +647,8 @@ function Audit-UsbSettings {
   
   # If either of the variables are more than 0, 1 or more USB device or controller doesn't have their power option disabled.
   if ($usbErrors -ne 0) {
-    Write-Host "$usbErrors USB controller(s)/USB device(s) don't have their power settings disabled."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $usbErrors USB controller(s)/USB device(s) don't have their power settings disabled."
+    Write-Host "$usbErrors USB controller/USB device(s) don't have their power settings disabled."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $usbErrors USB controller/USB device(s) don't have their power settings disabled."
     
     return $false
   }
