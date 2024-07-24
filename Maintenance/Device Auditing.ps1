@@ -662,29 +662,62 @@ function Audit-UsbSettings {
 
 function Audit-Adobe {
   # Path where the Adobe .exe file exists
-  $exePath = "C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
+  $32BitExePath = "C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
+  $64BitExePath = "C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"
   
   # Registry path where the RUNASADMIN data is set
   $regPath = "HKLM\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers"
   
-  # Pulls the registry key to see if it was created previously
-  $adminRegKey = Get-ItemProperty -Path "Registry::$regPath" -Name $exePath -ErrorAction SilentlyContinue
+  # Pulls the registry keys to see if it was created previously
+  $32BitAdminRegKey = Get-ItemProperty -Path "Registry::$regPath" -Name $32BitExePath -ErrorAction SilentlyContinue
+  $64BitAdminRegKey = Get-ItemProperty -Path "Registry::$regPath" -Name $64BitExePath -ErrorAction SilentlyContinue
   
   Write-Host "Auditing Adobe..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Adobe..."
   
-  if ($adminRegKey -ne $null -and $adminRegKey.'C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe' -eq "RUNASADMIN") {
-    Write-Host "Adobe is correctly configured to run as admin for all users."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is correctly configured to run as admin for all users."
-    
-    return $true
-  }
-  else {
-    Write-Host "Adobe is not correctly configured to run as admin for all users."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not correctly configured to run as admin for all users."
-    
-    return $false
-  }
+    # Test for the 32 vs 64 bit version of Adobe.
+    if (Test-Path $32BitExePath) {
+        Write-Host "32-bit Adobe was found."
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 32-bit Adobe was found."
+
+        # Check the registry key to make sure it exists and is set correctly. 
+        if ($32BitAdminRegKey -ne $null -and $32BitAdminRegKey.'C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe' -eq "RUNASADMIN") {
+            Write-Host "Adobe 32-bit is correctly configured to run as admin for all users."
+            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe 32-bit is correctly configured to run as admin for all users."
+  
+            return $true
+        }
+        else {
+            Write-Host "Adobe is not correctly configured to run as admin for all users."
+            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not correctly configured to run as admin for all users."
+  
+            return $false
+        }
+    } 
+    elseif (Test-Path $64BitExePath) {
+        Write-Host "64-bit Adobe was found."
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 64-bit Adobe was found."
+
+        if ($64BitAdminRegKey -ne $null -and $64BitAdminRegKey.'C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe' -eq "RUNASADMIN") {
+            Write-Host "Adobe 64-bit is correctly configured to run as admin for all users."
+            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe 64-bit is correctly configured to run as admin for all users."
+  
+            return $true
+        }
+        else {
+            Write-Host "Adobe is not correctly configured to run as admin for all users."
+            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not correctly configured to run as admin for all users."
+  
+            return $false
+        }
+    }
+    else {
+        # Do a more thorough test to find an exe?
+        Write-Host "Adobe could not be found in its usual install pathway. Adobe is not installed or an old version of Adobe is installed."
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 6Adobe could not be found in its usual install pathway. Adobe is not installed or an old version of Adobe is installed."
+
+        return $false
+    }
 }
 
 # Create custom objects for each function
