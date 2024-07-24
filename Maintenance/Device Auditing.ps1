@@ -639,6 +639,9 @@ function Audit-UsbSettings {
     # Looking to see if the power settings are enabled for the USB devices/controllers
     foreach ($i in $usbDevices) {
         if ($i.Name -notlike "*USB GbE*") {
+            Write-Host "The following USB device isn't properly configured: $($i.Name)"
+            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following USB device isn't properly configured: $($i.Name)"
+      
             $usbErrors++
         }
     }
