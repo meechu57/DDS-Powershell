@@ -632,11 +632,9 @@ function Audit-UsbSettings {
     # All USB devices
     $usbDevices = Get-CimInstance -ClassName Win32_PnPEntity |
         Select-Object Name, @{ Name = "Enable"; Expression = { 
-                $powerMgmt | Where-Object InstanceName -Like "*$($_.PNPDeviceID)*" | Select-Object -ExpandProperty Enable }}, DeviceID |
+                $powerMgmt | Where-Object InstanceName -Like "*$($_.PNPDeviceID)*" | Select-Object -ExpandProperty Enable }} |
         Where-Object { $null -ne $_.Enable -and $_.Enable -eq $true } |  
         Where-Object {$_.Name -like "*USB*" -and $_.Name -notlike "*Virtual*"}
-  
-
   
     # Looking to see if the power settings are enabled for the USB devices/controllers
     foreach ($i in $usbDevices) {
