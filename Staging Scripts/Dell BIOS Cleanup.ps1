@@ -8,7 +8,7 @@ switch ($env:scriptRunType) {
 }
 
 # For error tracking.
-$errros = 0
+$errors = 0
 
 # Uninstall DellBIOSProvider
 try {
