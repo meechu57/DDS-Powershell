@@ -255,8 +255,8 @@ if ($errors -and $errors -ne 0) {
 }
 
 if ($reboot -and $reboot -eq $true) {
-  Write-Host "Reboot option selected. Rebooting the comtpuer..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Reboot option selected. Rebooting the comtpuer..."
+  Write-Host "Reboot option selected. Rebooting the computer..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Reboot option selected. Rebooting the computer..."
   
   shutdown /r
 }
