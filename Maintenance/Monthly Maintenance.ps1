@@ -69,12 +69,15 @@ $auditInput = $auditInput.Trim()
 $auditInput = $auditInput.TrimEnd(',')
 
 # Pull the result from the custom field.
-$override = $env:auditOverride
+$override = $env:overrideAuditResults
 
 # Show what is going to be configured.
 if ($auditInput -eq "Compliant") {
   Write-Host "This device fully is compliant!"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") This device is fully compliant!"
+} elseif ($override -eq $true) {
+  Write-Host "The override option was set. Configuring all settings."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The override option was set. Configuring all settings."
 } else {
   Write-Host "The following settings will be configured: $auditInput"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following settings will be configured: $auditInput"

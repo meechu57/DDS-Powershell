@@ -779,7 +779,6 @@ $auditingArray = @(
 
 # Goes through the above array and if the value is false, add that setting to the end results string.
 foreach ($function in $auditingArray) {
-  Write-Host "$($function.Name) is set to: $($function.Value)"
   if ($function.Value -eq $false) {
     $results = $results + $function.Name + ", "
   }
