@@ -68,6 +68,9 @@ $auditInput = Ninja-Property-Get auditResults
 $auditInput = $auditInput.Trim()
 $auditInput = $auditInput.TrimEnd(',')
 
+# Pull the result from the custom field.
+$override = $env:auditOverride
+
 # Show what is going to be configured.
 if ($auditInput -eq "Compliant") {
   Write-Host "This device fully is compliant!"
@@ -153,7 +156,7 @@ if ($battery -and $battery.name -notlike "*UPS*") {
   $isLaptop = 1
 }
 
-if ($logFiles.Value) {
+if ($logFiles.Value -or $override -eq $true) {
   # Checks to see if the Scripts.log file exists and creates it if it doesn't
   if(!(Test-Path 'C:\DDS\Logs\Scripts.log')) {
     try {
@@ -258,11 +261,12 @@ if ($modernStandby.Value -and !$isLaptop) {
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Modern Standby is already disabled."
     }
   }
-    # Put the device in a pending reboot state.
-    Enable-PendingReboot
+  
+  # Put the device in a pending reboot state.
+  Enable-PendingReboot
 }
 
-if ($uac.Value) {
+if ($uac.Value -or $override -eq $true) {
   # The registry path where EnableLUA exists
   $regPath = "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
   
@@ -286,7 +290,7 @@ if ($uac.Value) {
   }
 }
 
-if ($powerOptions.Value) {
+if ($powerOptions.Value -or $override -eq $true) {
   # Assigning these as variables for readability purposes
   $usbSubGUID = '2a737441-1930-4402-8d77-b2bebba308a3'
   $usbSelectiveSuspend = '48e6b7a6-50f5-4782-a5d4-53bb8f07e226'
@@ -409,7 +413,7 @@ if ($powerOptions.Value) {
   }
 }
 
-if ($firewall.Value) {
+if ($firewall.Value -or $override -eq $true) {
   # Get the values of the 'Enabled' property for all three firewalls listed in the Get-NetFirewallProfile cmdlet.
   $firewallProfiles = Get-NetFirewallProfile | Select-Object -ExpandProperty Enabled
   
@@ -440,7 +444,7 @@ if ($firewall.Value) {
   }
 }
 
-if ($timeZone.Value) {
+if ($timeZone.Value -or $override -eq $true) {
   # Gets the currently set time zone
   $timeZone = (Get-TimeZone).id
   
@@ -464,7 +468,7 @@ if ($timeZone.Value) {
   }
 }
 
-if ($services.Value) {
+if ($services.Value -or $override -eq $true) {
   # For error tracking
   $errors = 0
   
@@ -599,7 +603,7 @@ if ($services.Value) {
   }
 }
 
-if ($fastBoot.Value) {
+if ($fastBoot.Value -or $override -eq $true) {
   # The registry path where HiberbootEnabled exists
   $regPath = "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power"
   
@@ -640,7 +644,7 @@ if ($fastBoot.Value) {
   }
 }
 
-if ($isoMounting.Value) {
+if ($isoMounting.Value -or $override -eq $true) {
   # Registry path to disable ISO mounting
   $regPath = "HKCR\Windows.IsoFile\shell\mount"
   
@@ -667,7 +671,7 @@ if ($isoMounting.Value) {
   }
 }
 
-if ($nic.Value) {
+if ($nic.Value -or $override -eq $true) {
   # For error tracking
   $errors = 0
   
@@ -914,11 +918,11 @@ if ($nic.Value) {
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors errors occurred while configuring the NIC(s)."
   }
 
-    # Put device in pending reboot state.
-    Enable-PendingReboot
+  # Put device in pending reboot state.
+  Enable-PendingReboot
 }
 
-if ($usb.Value) { 
+if ($usb.Value -or $override -eq $true) { 
   # For error tracking
   $errors = 0
   
@@ -949,7 +953,7 @@ if ($usb.Value) {
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Finished configuring power settings for all USB devices and controllers with $errors errors."
 }
 
-if ($adobe.Value) {
+if ($adobe.Value -or $override -eq $true) {
   # Path where the Adobe .exe file exists
   $32BitExePath = "C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
   $64BitExePath = "C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"
