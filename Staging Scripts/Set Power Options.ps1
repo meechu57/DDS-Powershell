@@ -18,6 +18,17 @@ $usbSelectiveSuspend = '48e6b7a6-50f5-4782-a5d4-53bb8f07e226'
 $hubSelectiveSuspend = '0853a681-27c8-4100-a2fd-82013e970683'
 $usbLinkPowerManagement = 'd4e98f31-5ffe-4ce1-be31-1b38b384c009'
 
+# Look for a non-battery backup battery. This means that the device is a laptop.
+$battery = Get-CimInstance Win32_Battery
+$isLaptop = 0
+
+if ($battery -and $battery.name -notlike "*UPS*") {
+  Write-Host "Laptop detected."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected."
+  
+  $isLaptop = 1
+}
+
 # For error tracking
 $errors = 0
 
@@ -46,14 +57,16 @@ try {
   $error++
 }
 
-# Disable hibernation
-try {
-  powercfg -h off
-} catch {
-  Write-Host "Failed to disable hibernation: $_"
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to disable hibernation: $_"
-  
-  $error++
+if ($isLaptop -eq 0) {
+  # Disable hibernation
+  try {
+    powercfg -h off
+  } catch {
+    Write-Host "Failed to disable hibernation: $_"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to disable hibernation: $_"
+    
+    $error++
+  }
 }
 
 # Disable hybrid sleep
@@ -112,14 +125,17 @@ try {
 }
 
 # Set Turn off display after to 90 mins (in seconds)
-try {
-  powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 5400
-  powercfg /setdcvalueindex SCHEME_CURRENT SUB_VIDEO VIDEOIDLE 5400
-} catch {
-  Write-Host "Failed to adjust screen timeout: $_"
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to adjust screen timeout: $_"
-  
-  $error++
+if ($env:setScreenTimeout) {
+  $timeout = $env:screenTimeoutValue
+  try {
+    powercfg /setacvalueindex SCHEME_CURRENT SUB_VIDEO VIDEOIDLE $timeout
+    powercfg /setdcvalueindex SCHEME_CURRENT SUB_VIDEO VIDEOIDLE $timeout
+  } catch {
+    Write-Host "Failed to adjust screen timeout: $_"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to adjust screen timeout: $_"
+    
+    $error++
+  } 
 }
 
 # Disable Turn off hard disk after
@@ -137,6 +153,8 @@ try {
 if ($errors -ne 0) {
   Write-Host "$errors error(s) were encountered while setting power options."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors error(s) were encountered while setting power options."
+  
+  exit 1
 } else {
   Write-Host "Power Options successfully set."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Options successfully set."  

@@ -13,20 +13,19 @@ $regPath = "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power"
 # Gets the value of the HiberbootEnabled registry key
 $hiberbootRegKey = Get-ItemProperty -Path "Registry::$regPath" -Name HiberbootEnabled -ErrorAction SilentlyContinue
 
-Write-Host "Attempting to disable Fast Boot..."
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Attempting to disable Fast Boot..."
+Write-Host "Disabling Fast Boot..."
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Fast Boot..."
 
 # If the registry key doesn't exist, create it and set it to 0.
 if ($hiberbootRegKey -eq $null) {
   try {
     # Add the registry key and set it to 0.
     reg add $regPath /v HiberbootEnabled /t REG_DWORD /d 0 /f
-    
-    Write-Host "Successfully set the HiberbootEnabled registry key to 0 and disabled fast boot."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Successfully set the HiberbootEnabled registry key to 0 and disabled fast boot."
   } catch {
     Write-Host "The HiberbootEnabled registry key doesn't exist. Failed to add the registry key and disable fast boot: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The HiberbootEnabled registry key doesn't exist. Failed to add the registry key and disable fast boot: $_"
+    
+    exit 1
   }
 } 
 else {
@@ -41,6 +40,8 @@ else {
     } catch {
       Write-Host "Failed to set the HiberbootEnabled registry key to 0 and disable fast boot: $_"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the HiberbootEnabled registry key to 0 and disable fast boot: $_"
+      
+      exit 1
     }
   } 
   else {

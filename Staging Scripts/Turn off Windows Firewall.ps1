@@ -11,9 +11,9 @@ switch ($env:scriptRunType) {
 $firewallProfiles = Get-NetFirewallProfile | Select-Object -ExpandProperty Enabled
 
 # Check to see what the current state of the firewall is
-if ($firewallProfiles -ne $null) {
-  Write-Host "Disabling Windows Firewall..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Windows Firewall..."
+if ($firewallProfiles) {
+  Write-Host "Disabling Windows Firewall(s)..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Windows Firewall(s)..."
   
   # Firewall is already configured properly
   if ($firewallProfiles[0] -eq "False" -and $firewallProfiles[1] -eq "False" -and $firewallProfiles[2] -eq "False") {
@@ -34,4 +34,6 @@ if ($firewallProfiles -ne $null) {
 else {
   Write-Host "An error occurred while finding the state of Windows Firewall."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while finding the state of Windows Firewall."
+  
+  exit 1
 }

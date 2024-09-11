@@ -138,4 +138,6 @@ if ($errors -eq 0) {
 } else {
   Write-Host "$errors errors occurred while configuring the FDResPub, SSDPSRV, and upnphost services. Manual investigation is required."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors errors occurred while configuring the FDResPub, SSDPSRV, and upnphost services. Manual investigation is required."
+  
+  exit 1
 }

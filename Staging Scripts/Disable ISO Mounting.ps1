@@ -7,12 +7,14 @@ switch ($env:scriptRunType) {
   Default { Write-Host "An error occurred when trying to set the log pathway. Setting the log path to the default." ; $logPath = "C:\DDS\Logs\Scripts.log" }
 }
 
+# Registry path to disable ISO mounting
 $regPath = "HKCR\Windows.IsoFile\shell\mount"
 
+# Check to see if the registry key is already set
 $programmaticAccessReg = Get-ItemProperty -Path "Registry::$regPath" -Name ProgrammaticAccessOnly -ErrorAction SilentlyContinue
 
-Write-Host "Attempting to disable ISO Mounting..."
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Attempting to disable ISO Mounting..."
+Write-Host "Disabling ISO Mounting..."
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling ISO Mounting..."
 
 # If this is true, the key already exists. Otherwise create the key.
 if ($programmaticAccessReg) {
@@ -24,10 +26,10 @@ else {
     # This will add the registry key 'ProgrammaticAccessOnly' under the given registry path
     reg add $regPath /v ProgrammaticAccessOnly /t REG_SZ /f
     
-    Write-Host "Successfully set ISO mounting to not be the default action of an ISO."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Successfully set ISO mounting to not be the default action of an ISO."
   } catch {
     Write-Host "Failed to set ISO mounting to not be the default action of an ISO: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set ISO mounting to not be the default action of an ISO: $_"
+    
+    exit 1
   }
 }

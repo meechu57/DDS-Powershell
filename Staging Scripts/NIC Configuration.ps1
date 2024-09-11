@@ -251,4 +251,6 @@ if ($errors -eq 0) {
 } else {
   Write-Host "$errors errors occurred while configuring the NIC(s)."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors errors occurred while configuring the NIC(s)."
+  
+  exit 1
 }

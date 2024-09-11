@@ -142,6 +142,8 @@ Start-Sleep -Seconds 5
 if ((Get-Process -Name TeamViewer) -eq $null) {
   Write-Host "An error occurred when starting TeamViewer. TeamViewer did not start properly."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when starting TeamViewer. TeamViewer did not start properly."
+  
+  exit 1
 } else {
   Write-Host "TeamViewer was successfully restarted."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") TeamViewer was successfully restarted."

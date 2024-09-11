@@ -10,20 +10,20 @@ switch ($env:scriptRunType) {
 # Gets the currently set time zone
 $timeZone = (Get-TimeZone).id
 
+Write-Host "Setting the time zone..."
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Setting the time zone..."
+
 # Time zone should be set to EST
 if ($timeZone -ne "Eastern Standard Time") {
-  Write-Host "Setting the time zone..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Setting the time zone..."
-  
   # Sets timezone to EST
   try {
    Set-TimeZone -Id 'Eastern Standard Time'
    
-   Write-Host "Successfully set the time zone to Eastern Standard Time."
-   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Successfully set the time zone to Eastern Standard Time."
   } catch {
-    Write-Host "Failed to set timezone to EST. Current time zone is $($timeZone)"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set timezone to EST. Current time zone is $($timeZone)"
+    Write-Host "Failed to set timezone to EST. Current time zone is $($timeZone): $_"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set timezone to EST. Current time zone is $($timeZone): $_"
+    
+    exit 1
   }
 }
 else {
