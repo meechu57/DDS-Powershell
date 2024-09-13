@@ -171,7 +171,7 @@ begin {
     $pmmSoftware = $env:practiceManagementSoftware
       if ($pmmSoftware -eq "Other") { $pmmSoftware = $env:otherSoftware }
       elseif($pmmSoftware -eq $null) {$pmmSoftware = "your Practice Management software"}
-    $Text = "Your server will reboot in 15 minutes.`nTo avoid any errors, please close out of $pmmSoftware before the server reboots.`n`nIf you have any questions or concerns regarding this reboot, please call DDS Integration at 616-914-4479.`n`n`nPress OK to close this message."
+    $Text = "Your server will reboot in 15 minutes.`n`nTo avoid any errors, please close out of $pmmSoftware before the server reboots.`n`nIf you have any questions or concerns regarding this reboot, please call DDS Integration at 616-914-4479.`n`nClick 'OK' to close this message."
     $ButtonRtext = "OK"
     $ButtonRcountdown = 900
     $ButtonRdefault = $True
@@ -757,8 +757,4 @@ process {
         $Script:CountDown = $null
     }
 }
-end {
-    
-    
-    
-}
+end {}
