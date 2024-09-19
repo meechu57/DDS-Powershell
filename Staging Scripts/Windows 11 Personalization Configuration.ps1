@@ -16,6 +16,8 @@ function Test-IsSystem {
 # If it was we'll error out and inform the technician they should run it as the "Current Logged on User"
 if (Test-IsSystem) {
   Write-Host "This script does not work when run as system. Use Run As: 'Current Logged on User'."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") This script does not work when run as system. Use Run As: 'Current Logged on User'."
+
   exit 1
 }
 
@@ -34,13 +36,13 @@ if ($osVersion -like "10.0.2*") {
   # Remove Task View button
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "ShowTaskViewButton" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "ShowTaskViewButton" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the ShowTaskViewButton registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the ShowTaskViewButton registry key: $_"
@@ -49,13 +51,13 @@ if ($osVersion -like "10.0.2*") {
   # Remove Widgets
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "TaskbarDa" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "TaskbarDa" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the TaskbarDa registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TaskbarDa registry key: $_"
@@ -64,13 +66,13 @@ if ($osVersion -like "10.0.2*") {
   # Remove Chat
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "TaskbarMn" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "TaskbarMn" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the TaskbarMn registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TaskbarMn registry key: $_"
@@ -79,13 +81,13 @@ if ($osVersion -like "10.0.2*") {
   # Remove CoPilot
   try {
     $keyPath = "HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "TurnOffWindowsCopilot" -Value 1 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "TurnOffWindowsCopilot" -Value 1 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the TurnOffWindowsCopilot registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TurnOffWindowsCopilot registry key: $_"
@@ -94,13 +96,13 @@ if ($osVersion -like "10.0.2*") {
   # Moves Windows icon to the left
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "TaskbarAl" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "TaskbarAl" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the TaskbarAl registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TaskbarAl registry key: $_"
@@ -109,13 +111,13 @@ if ($osVersion -like "10.0.2*") {
   # Removes Search
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "SearchboxTaskbarMode" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "SearchboxTaskbarMode" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the SearchboxTaskbarMode registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the SearchboxTaskbarMode registry key: $_"
@@ -128,13 +130,13 @@ if ($osVersion -like "10.0.2*") {
   # Shows more pins on the start menu
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "Start_Layout" -Value 1 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "Start_Layout" -Value 1 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the Start_Layout registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the Start_Layout registry key: $_"
@@ -143,13 +145,13 @@ if ($osVersion -like "10.0.2*") {
   # Disables the info tips
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "ShowInfoTip" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "ShowInfoTip" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the ShowInfoTip registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the ShowInfoTip registry key: $_"
@@ -158,13 +160,13 @@ if ($osVersion -like "10.0.2*") {
   # Disables the Iris info tips
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "Start_IrisRecommendations" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "Start_IrisRecommendations" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the Start_IrisRecommendations registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the Start_IrisRecommendations registry key: $_"
@@ -174,13 +176,13 @@ if ($osVersion -like "10.0.2*") {
       
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Start"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Start" /v VisiblePlaces /t REG_BINARY /d 86087352AA5143429F7B2776584659D4BC248A140CD68942A0806ED9BBA24882 /f
+    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Start" /v VisiblePlaces /t REG_BINARY /d 86087352AA5143429F7B2776584659D4BC248A140CD68942A0806ED9BBA24882 /f | Out-Null
   } catch {
     Write-Host "Failed to set the VisiblePlaces registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the VisiblePlaces registry key: $_"
@@ -189,13 +191,13 @@ if ($osVersion -like "10.0.2*") {
   # Show all file name extensions
   try {
     $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
+    if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
       Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
       exit 1
     }
-    New-ItemProperty -Path $keyPath -Name "HideFileExt" -Value 0 -PropertyType DWord -Force
+    New-ItemProperty -Path $keyPath -Name "HideFileExt" -Value 0 -PropertyType DWord -Force | Out-Null
   } catch {
     Write-Host "Failed to set the HideFileExt registry key: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the HideFileExt registry key: $_"
@@ -209,13 +211,13 @@ if ($osVersion -like "10.0.2*") {
     # Forces Dark mode on apps
     try {
       $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-      if (-not (Test-Path $keyPath)) {
+      if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
         Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
         exit 1
       }
-      New-ItemProperty -Path $keyPath -Name "AppsUseLightTheme" -Value 0 -PropertyType DWord -Force
+      New-ItemProperty -Path $keyPath -Name "AppsUseLightTheme" -Value 0 -PropertyType DWord -Force | Out-Null
     } catch {
       Write-Host "Failed to set the AppsUseLightTheme registry key: $_"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the AppsUseLightTheme registry key: $_"
@@ -224,13 +226,13 @@ if ($osVersion -like "10.0.2*") {
     # Forces Dark mode on Windows
     try {
       $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
-      if (-not (Test-Path $keyPath)) {
+      if (-not (Test-Path $keyPath -ErrorAction SilentlyContinue)) {
         Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
 
         exit 1
       }
-      New-ItemProperty -Path $keyPath -Name "SystemUsesLightTheme" -Value 0 -PropertyType DWord -Force
+      New-ItemProperty -Path $keyPath -Name "SystemUsesLightTheme" -Value 0 -PropertyType DWord -Force | Out-Null
     } catch {
       Write-Host "Failed to set the SystemUsesLightTheme registry key: $_"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the SystemUsesLightTheme registry key: $_"
