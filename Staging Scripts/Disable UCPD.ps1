@@ -11,10 +11,10 @@ Write-Host "Attempting to disable the User Choice Protection Driver..."
 Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Attempting to disable the User Choice Protection Driver..."
 
 # Get the current state of the registry key
-$UCPD = Get-ItemProperty -Path “HKLM:\SYSTEM\CurrentControlSet\Services\UCPD” -Name “Start” -ErrorAction SilentlyContinue
+$UCPDRegistry = Get-ItemProperty -Path “HKLM:\SYSTEM\CurrentControlSet\Services\UCPD” -Name “Start” -ErrorAction SilentlyContinue
 
 # Set the registry key if it exists. If the key doesn't exist, we shouldn't have to worry about it.
-if ($UCPD -and $UCPD.Start -ne 4) {
+if ($UCPDRegistry -and $UCPDRegistry.Start -ne 4) {
 	try {
 		New-ItemProperty -Path “HKLM:\SYSTEM\CurrentControlSet\Services\UCPD” -Name “Start” -Value 4 -PropertyType DWORD -Force
 
@@ -26,9 +26,29 @@ if ($UCPD -and $UCPD.Start -ne 4) {
 
 		exit 1
 	}
-} elseif (-not $UCPD) {
+} elseif (-not $UCPDRegistry) {
 	Write-Host "The UCPD driver doesn't exist. Exiting the script."
 	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver doesn't exist. Exiting the script."
+
+	exit 1
+}
+
+# Get the current state of the scheduled task.
+$UCPDTask = Get-ScheduledTask -TaskPath "\Microsoft\Windows\AppxDeploymentClient\" -TaskName "UCPD velocity"
+
+# Disable the scheduled task if it exists.
+if ($UCPDTask -and $UCPDTask.State -ne "Disabled" ) {
+	try {
+		Disable-ScheduledTask -TaskPath "\Microsoft\Windows\AppxDeploymentClient\" -TaskName "UCPD velocity" -ErrorAction Continue
+	} catch {
+		Write-Host "Failed to disable the UCPD velocity scheduled task: $_"
+		Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to disable the UCPD velocity scheduled task: $_"
+
+		exit 1
+	} 
+} elseif (-not $UCPDTask) {
+	Write-Host "The UCPD driver scheduled task doesn't exist. Exiting the script."
+	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver scheduled task doesn't exist. Exiting the script."
 
 	exit 1
 }
