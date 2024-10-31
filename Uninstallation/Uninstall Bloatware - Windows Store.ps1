@@ -42,6 +42,7 @@ $appsToUninstall = @(
 $appsToUninstall2 = @(
   'Microsoft.XboxGameOverlay'
   'SpotifyAB.SpotifyMusic'  
+  'Microsoft.Copilot'
 )
 
 # Goes through the list of software to uninstall and compares it to the list of installed Windows software.
@@ -67,7 +68,7 @@ foreach ($app in $appsToUninstall2) {
       Write-Host "Uninstalling $app..."
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $app..."
     
-      Remove-AppxPackage -Package $fullName -AllUsers
+      Remove-AppxPackage -Package $fullName -AllUsers -ErrorAction Continue
     } catch {Write-Host "Error: $_"}
   }
 }
