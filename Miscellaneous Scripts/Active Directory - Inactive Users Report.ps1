@@ -114,6 +114,7 @@ $Today = Get-Date
 
 # Get the script variable if it was set.
 if ($env:numberOfDaysToReportOn -and $env:numberOfDaysToReportOn -notlike "null") { $NumberOfDays = $env:numberOfDaysToReportOn }
+if ($env:excludeUsers -and $env:excludeUsers -notlike "null") { $excludedUsers = $env:excludeUsers }
 
 # Erroring out when ran without administrator rights
 if (-not (Test-IsElevated)) {
@@ -139,7 +140,6 @@ if ($excludedUsers) {
   Write-Host "Ignoring the following users: $excludedUsers"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ignoring the following users: $excludedUsers"
   
-  $excludedUsers = $env:excludeUsers
   $excludedUsers = $excludedUsers.Trim()
   $excludedUsers = $excludedUsers.TrimEnd(',')
   $excludedUsers = $excludedUsers -split ","
@@ -170,9 +170,9 @@ if ($excludedUsers) {
     if (-not $active) {
       $InactiveUsers += $user
     }
-
-    $InactiveUsers = $InactiveUsers | Select-Object SamAccountName, UserPrincipalName, LastLogonDate
   }
+  
+  $InactiveUsers = $InactiveUsers | Select-Object SamAccountName, UserPrincipalName, LastLogonDate
 } else {
   # This is the same process as above, minus the filtering for excluded users.
   $Users = Get-ADUser -Filter {SamAccountName -ne "ddsadmin"} -Properties SamAccountName, UserPrincipalName, LastLogonDate
