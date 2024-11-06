@@ -109,13 +109,6 @@ function Set-NinjaProperty {
   }
 }
 
-# Todays date
-$Today = Get-Date
-
-# Get the script variable if it was set.
-if ($env:numberOfDaysToReportOn -and $env:numberOfDaysToReportOn -notlike "null") { $NumberOfDays = $env:numberOfDaysToReportOn }
-if ($env:excludeUsers -and $env:excludeUsers -notlike "null") { $excludedUsers = $env:excludeUsers }
-
 # Erroring out when ran without administrator rights
 if (-not (Test-IsElevated)) {
   Write-Error -Message "Access Denied. Please run with Administrator privileges."
@@ -131,6 +124,21 @@ if (-not (Test-IsDomainController)) {
   
   exit 1
 }
+
+# Check that Active Directory module is available
+if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {
+  Write-Host "Active Directory module is not available. Please install it and try again."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Active Directory module is not available. Please install it and try again."
+  
+  exit 1
+}
+
+# Todays date
+$Today = Get-Date
+
+# Get the script variable if it was set.
+if ($env:numberOfDaysToReportOn -and $env:numberOfDaysToReportOn -notlike "null") { $NumberOfDays = $env:numberOfDaysToReportOn }
+if ($env:excludeUsers -and $env:excludeUsers -notlike "null") { $excludedUsers = $env:excludeUsers }
 
 Write-Host "Getting inactive users..."
 Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Getting inactive users..."
