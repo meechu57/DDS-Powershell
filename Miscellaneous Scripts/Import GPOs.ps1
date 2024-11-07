@@ -20,13 +20,13 @@ Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Attemptin
 # Go through each GPO and import it. If the Override Existing GPOs box isn't checked, the script will exit if any of the GPOs already exist.
 if (-not $overrideGPOs) {
 	foreach ($GPO in $GPOs) {
-	$existingGPO = Get-GPO -Name $GPO -ErrorAction SilentlyContinue
-
-	if ($existingGPO) {
-		Write-Host "The $GPO GPO already exists. Please rename or delete the GPO and try agin."
-		Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The $GPO GPO already exists. Please rename or delete the GPO and try agin."
+    $existingGPO = Get-GPO -Name $GPO -ErrorAction SilentlyContinue
     
-		exit 1 
+    if ($existingGPO) {
+		  Write-Host "The $GPO GPO already exists. Please rename or delete the GPO and try agin."
+		  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The $GPO GPO already exists. Please rename or delete the GPO and try agin."
+      
+		  exit 1 
 		}
 	}
 }
@@ -34,11 +34,11 @@ if (-not $overrideGPOs) {
 # Go through each GPO and import it. If the Override Existing GPOs box isn't checked, the script will exit if any of the GPOs already exist.
 foreach ($GPO in $GPOs) {
 	try {
-		Import-GPO -BackupGpoName $GPO -TargetName $GPO -path $backupLocation -CreateIfNeeded | Out-Null
+		Import-GPO -BackupGpoName $GPO -TargetName $GPO -path $backupLocation -CreateIfNeeded
 	} catch {
 		Write-Host "Failed to import the $GPO GPO: $_"
 		Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to import the $GPO GPO: $_"
-
+    
 		exit 1
 	}
 }
