@@ -161,10 +161,11 @@ if (-not (Test-IsDomainController)) {
 
 # Download the GPO_Backup.zip file
 try {
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
   Invoke-WebRequest -Uri "https://e95e3856-e507-4f6d-9aa7-9abb9731aad4.usrfiles.com/archives/e95e38_e40fab83f96b4d468e1ede8a21d1c652.zip" -OutFile "$env:temp/GPO_Backup.zip"
 } catch {
-  Write-Host "Failed to extract the file from GPO_Backup.zip: $_"
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to extract the file from GPO_Backup.zip: $_"
+  Write-Host "Failed to download the GPO_Backup.zip file: $_"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to download the GPO_Backup.zip file: $_"
 
   exit 1
 }
@@ -329,7 +330,7 @@ else {
 
 # Clean up the files in the temp folder.
 if (Test-Path "$env:temp/GPO_Backup.zip") {
-  Write-Host "GPO_Backup.zip file found. Deleting..."
+  Write-Host "Deleting the GPO_Backup.zip file..."
   try {
     Remove-Item "$env:temp/GPO_Backup.zip" -Force
   } catch {
