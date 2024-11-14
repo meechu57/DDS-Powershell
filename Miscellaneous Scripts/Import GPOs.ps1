@@ -27,26 +27,26 @@ It will return the following information for each linked GPOs:
 .INPUTS
 DN of the object with GLINK attribut
 .OUTPUTS
-Target: DC=fourthcoffee,DC=com
+Target: DC=ddsintegration,DC=com
 GPOID: 31B2F340-016D-11D2-945F-00C04FB984F9
 GPOName: Default Domain Policy
-GPODomain: fourthcoffee.com
+GPODomain: ddsintegration.com
 Enforced: <YES - NO>
 Enabled: <YES - NO>
 Order: 1
 .EXAMPLE
-get-gplink -path "dc=fourthcoffee,dc=com"
-This command will list the GPOs that are linked to the DomainDNS object "dc=fourthcoffee,dc=com" 
+get-gplink -path "dc=ddsintegration,dc=com"
+This command will list the GPOs that are linked to the DomainDNS object "dc=ddsintegration,dc=com" 
 .EXAMPLE
-get-gplink -path "dc=child,dc=fourthcoffee,dc=com" -server childdc.child.fourthcoffee.com
-This command will list the GPOs that are linked to the DomainDNS object "dc=child,dc=fourthcoffee,dc=com". You need to specify a
-target DC of the domain child.fourthcoffee.com in order for the command to work.
+get-gplink -path "dc=child,dc=ddsintegration,dc=com" -server childdc.child.ddsintegration.com
+This command will list the GPOs that are linked to the DomainDNS object "dc=child,dc=ddsintegration,dc=com". You need to specify a
+target DC of the domain child.ddsintegration.com in order for the command to work.
 .EXAMPLE
-Get-Gplink -site "CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=fourthcoffee,DC=com"
+Get-Gplink -site "CN=Default-First-Site-Name,CN=Sites,CN=Configuration,DC=ddsintegration,DC=com"
 This command will list the GPOs that are linked to site "Default-First-Site-Name"
 .EXAMPLE
-get-gplink -path "dc=fourthcoffee,dc=com" | export-csv "gplink.csv"
-This command will list the GPOs that are linked to the DomainDNS object "dc=fourthcoffee,dc=com" and export them to a csv file.
+get-gplink -path "dc=ddsintegration,dc=com" | export-csv "gplink.csv"
+This command will list the GPOs that are linked to the DomainDNS object "dc=ddsintegration,dc=com" and export them to a csv file.
 The csv file can be used as an input to the cmdlet new-gplink 
 .EXAMPLE
 get-adobject -filter {(objectclass -eq "DomainDNS") -or (objectclass -eq "OrganizationalUnit")} | foreach {get-gplink -path $_.distinguishedname} | export-csv "gplinksall.csv"
@@ -151,7 +151,7 @@ function Test-IsDomainController {
   return $(Get-CimInstance -ClassName Win32_OperatingSystem).ProductType -eq 2
 }
 
-# Erroring out when ran on a non-domain controller
+# Erroring out when ran on a non-domain controller.
 if (-not (Test-IsDomainController)) {
   Write-Host "The script needs to be run on a domain controller!"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The script needs to be run on a domain controller!"
@@ -159,18 +159,39 @@ if (-not (Test-IsDomainController)) {
   exit 1
 }
 
+# Download and extract the GPO_Backup folder.
+try {
+  Invoke-WebRequest -Uri "https://e95e3856-e507-4f6d-9aa7-9abb9731aad4.usrfiles.com/archives/e95e38_e40fab83f96b4d468e1ede8a21d1c652.zip" -OutFile "$env:temp/GPO_Backup.zip"
+} catch {
+  Write-Host "Failed to extract the file from GPO_Backup.zip: $_"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to extract the file from GPO_Backup.zip: $_"
+
+  exit 1
+}
+
+if (Test-Path "$env:temp/GPO_Backup.zip") {
+  try {
+    Expand-Archive -LiteralPath "$env:temp/GPO_Backup.zip" -DestinationPath "$env:temp" -Force
+  } catch {
+    Write-Host "Failed to extract the file from GPO_Backup.zip: $_"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to extract the file from GPO_Backup.zip: $_"
+    
+    exit 1
+  }
+}
+
 # The current list of GPOs that we are importing.
 $allGPOs = @( "Folder Redirection", "Power Plan", "Time Server", "User Account Control", "User Profile Settings", "Windows Firewall" )
 
 # Convert the script variables to local variables.
-$backupLocation = $env:gpo_backupLocation
+$backupLocation = "$env:temp/GPO_Backup"
 $overrideGPOs = $env:overrideExistingGpos
 $importAllGPOs = $env:importAllGpos
 $linkGPOs = $env:linkGpos
 
 if (-not (Test-Path $backupLocation)) {
-  Write-Host "Invalid backup location pathway. Please input another location"
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Invalid backup location pathway. Please input another location"
+  Write-Host "Invalid backup location pathway. Please verify the location of the GPO_Backup folder."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Invalid backup location pathway. Please verify the location of the GPO_Backup folder."
   
   exit 1
 }
@@ -183,7 +204,7 @@ $importUAC = [PSCustomObject]@{ Name = "User Account Control"; Value = $env:impo
 $importUPS = [PSCustomObject]@{ Name = "User Profile Settings"; Value = $env:importUserProfileSettingsGpo }
 $importFirewall = [PSCustomObject]@{ Name = "Windows Firewall"; Value = $env:importWindowsFirewallGpo }
 
-# Combine all custom variables into an array
+# Combine all custom variables into an array.
 $importArray = @( $importFolderRedirection, $importPowerPlan, $importTimeServer, $importUAC, $importUPS, $importFirewall )
 
 # The array where the GPOs that we'll be importing will go.
