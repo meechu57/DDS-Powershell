@@ -159,7 +159,7 @@ if (-not (Test-IsDomainController)) {
   exit 1
 }
 
-# Download and extract the GPO_Backup folder.
+# Download the GPO_Backup.zip file
 try {
   Invoke-WebRequest -Uri "https://e95e3856-e507-4f6d-9aa7-9abb9731aad4.usrfiles.com/archives/e95e38_e40fab83f96b4d468e1ede8a21d1c652.zip" -OutFile "$env:temp/GPO_Backup.zip"
 } catch {
@@ -169,6 +169,7 @@ try {
   exit 1
 }
 
+# Extract the GPO_Backup.zip file
 if (Test-Path "$env:temp/GPO_Backup.zip") {
   try {
     Expand-Archive -LiteralPath "$env:temp/GPO_Backup.zip" -DestinationPath "$env:temp" -Force
@@ -323,6 +324,30 @@ else {
       
       exit 1
     }
+  }
+}
+
+# Clean up the files in the temp folder.
+if (Test-Path "$env:temp/GPO_Backup.zip") {
+  Write-Host "GPO_Backup.zip file found. Deleting..."
+  try {
+    Remove-Item "$env:temp/GPO_Backup.zip" -Force
+  } catch {
+    Write-Host "Failed to delete the GPO_Backup.zip file: $_"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to delete the GPO_Backup.zip file: $_"
+    
+    exit 1
+  }
+}
+if (Test-Path "$env:temp/GPO_Backup") {
+  Write-Host "Deleting the GPO_Backup folder..."
+  try {
+    Remove-Item "$env:temp/GPO_Backup" -Recurse -Force
+  } catch {
+    Write-Host "Failed to delete the GPO_Backup folder: $_"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to delete the GPO_Backup folder: $_"
+    
+    exit 1
   }
 }
 
