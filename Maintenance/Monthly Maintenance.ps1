@@ -68,8 +68,10 @@ $auditInput = Ninja-Property-Get auditResults
 $auditInput = $auditInput.Trim()
 $auditInput = $auditInput.TrimEnd(',')
 
-# Pull the result from the custom field.
+# Convert the script variables to local variables
 $override = $env:overrideAuditResults
+$verbose = $env:verbose
+
 
 # Show what is going to be configured.
 if ($auditInput -eq "Compliant") {
@@ -135,9 +137,13 @@ $adobe = [PSCustomObject]@{
     Name = "Adobe"
     Value = 0
 }
+$ucpd = [PSCustomObject]@{
+    Name = "UCPD"
+    Value = 0
+}
 
 # An array of all the above custom objects.
-$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe)
+$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe, $ucpd)
 
 # Goes through the input array and if the value matches the name in the custom objects above, it will set the value to 1.
 foreach ($input in $auditInput) {
@@ -153,7 +159,7 @@ $isLaptop = 0
 $battery = Get-CimInstance Win32_Battery
 
 if ($battery -and $battery.name -notlike "*UPS*") {
-  Write-Host "Laptop detected."
+  if ($verbose -eq $true) { Write-Host "Laptop detected." }
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected."
   
   $isLaptop = 1
@@ -165,7 +171,7 @@ if ($logFiles.Value -or $override -eq $true) {
     try {
       New-Item -ItemType File -Path "C:\DDS\Logs\Scripts.log" -Force
       
-      Write-Host "Added Scripts.log to the directory C:\DDS\Logs"
+      if ($verbose -eq $true) { Write-Host "Added Scripts.log to the directory C:\DDS\Logs" }
     } catch {
       Write-Host "Unable to add Scripts.log to the directory C:\DDS\Logs"
     }
@@ -176,7 +182,7 @@ if ($logFiles.Value -or $override -eq $true) {
     try {
       New-Item -ItemType File -Path "C:\DDS\Logs\Maintenance.log" -Force
       
-      Write-Host "Added Maintenance.log to the directory C:\DDS\Logss"
+      if ($verbose -eq $true) { Write-Host "Added Maintenance.log to the directory C:\DDS\Logs" }
     } catch {
       Write-Host "Unable to add Maintenance.log to the directory C:\DDS\Logs"
     }
@@ -187,7 +193,7 @@ if ($logFiles.Value -or $override -eq $true) {
     try {
       New-Item -ItemType File -Path "C:\DDS\Logs\Staging.log" -Force
       
-      Write-Host "Added Staging.log to the directory C:\DDS\Logs"
+      if ($verbose -eq $true) { Write-Host "Added Staging.log to the directory C:\DDS\Logs" }
     } catch {
       Write-Host "Unable to add Staging.log to the directory C:\DDS\Logs"
     }
@@ -198,7 +204,7 @@ if ($logFiles.Value -or $override -eq $true) {
     try {
       New-Item -ItemType File -Path "C:\DDS\Logs\Audit.log" -Force
       
-      Write-Host "Added Audit.log to the directory C:\DDS\Logs"
+      if ($verbose -eq $true) { Write-Host "Added Audit.log to the directory C:\DDS\Logs" }
     } catch {
       Write-Host "Unable to add Audit.log to the directory C:\DDS\Logs"
     }
@@ -209,7 +215,7 @@ if ($logFiles.Value -or $override -eq $true) {
     try {
       New-Item -ItemType File -Path "C:\DDS\Logs\Scheduled Automation.log" -Force
       
-      Write-Host "Added Scheduled Automation.log to the directory C:\DDS\Logs"
+      if ($verbose -eq $true) { Write-Host "Added Scheduled Automation.log to the directory C:\DDS\Logs" }
     } catch {
       Write-Host "Unable to add Scheduled Automation.log to the directory C:\DDS\Logs"
     }
@@ -220,7 +226,7 @@ if ($logFiles.Value -or $override -eq $true) {
     try {
       New-Item -ItemType File -Path "C:\DDS\Logs\Defender.log" -Force
       
-      Write-Host "Added Defender.log to the directory C:\DDS\Logss"
+      if ($verbose -eq $true) { Write-Host "Added Defender.log to the directory C:\DDS\Logs" }
     } catch {
       Write-Host "Unable to add Defender.log to the directory C:\DDS\Logs"
     }
@@ -252,7 +258,7 @@ if ($modernStandby.Value -and !$isLaptop) {
       try {
         reg add $regPath /v PlatformAoAcOverride /t REG_DWORD /d 0 /f
         
-        Write-Host "The PlatformAoAcOverride Registry key already existed but was incorrectly set. The value is now 0."
+        if ($verbose -eq $true) { Write-Host "The PlatformAoAcOverride Registry key already existed but was incorrectly set. The value is now 0." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The PlatformAoAcOverride Registry key already existed but was incorrectly set. The value is now 0."
       } catch {
         Write-Host "Failed to add the PlatformAoAcOverride Registry key: $_"
@@ -260,7 +266,7 @@ if ($modernStandby.Value -and !$isLaptop) {
       }
     }
     else {
-      Write-Host "Modern Standby is already disabled."
+      if ($verbose -eq $true) { Write-Host "Modern Standby is already disabled." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Modern Standby is already disabled."
     }
   }
@@ -288,7 +294,7 @@ if ($uac.Value -or $override -eq $true) {
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to add the EnableLUA Registry key and disable UAC."
     }
   } else {
-    Write-Host "UAC is already disabled."
+    if ($verbose -eq $true) { Write-Host "UAC is already disabled." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") UAC is already disabled."
   }
 }
@@ -421,7 +427,7 @@ if ($firewall.Value -or $override -eq $true) {
   $firewallProfiles = Get-NetFirewallProfile | Select-Object -ExpandProperty Enabled
   
   # Check to see what the current state of the firewall is
-  if ($firewallProfiles -ne $null) {
+  if ($firewallProfiles) {
     Write-Host "Disabling Windows Firewall..."
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Windows Firewall..."
     
@@ -466,7 +472,7 @@ if ($timeZone.Value -or $override -eq $true) {
     }
   }
   else {
-    Write-Host "Time zone is already set to Eastern Standard Time."
+    if ($verbose -eq $true) { Write-Host "Time zone is already set to Eastern Standard Time." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Time zone is already set to Eastern Standard Time."
   }
 }
@@ -485,7 +491,7 @@ if ($services.Value -or $override -eq $true) {
   
   # Checks to make sure the service gets pulled correctly
   if ($fdrpService -eq $null) {
-    Write-Host "The FDResPub service could not be found."
+    if ($verbose -eq $true) { Write-Host "The FDResPub service could not be found." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The FDResPub service could not be found."
     
     $errors++
@@ -501,8 +507,8 @@ if ($services.Value -or $override -eq $true) {
         $errors++
       }
     } else {
-      Write-Host "The startup type for FDResPub is already set to Automatic: $_"
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The startup type for FDResPub is already set to Automatic: $_"
+      if ($verbose -eq $true) { Write-Host "The startup type for FDResPub is already set to Automatic." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The startup type for FDResPub is already set to Automatic."
     }
     
     # If the service isn't running, start it
@@ -516,14 +522,14 @@ if ($services.Value -or $override -eq $true) {
         $errors++
       }
     } else {
-      Write-Host "The FDResPub service is already running."
+      if ($verbose -eq $true) { Write-Host "The FDResPub service is already running." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The FDResPub service is already running."
     }
   }
   
   # Checks to make sure the service gets pulled correctly
   if ($ssdpService -eq $null) {
-    Write-Host "The SSDPSRV service could not be found."
+    if ($verbose -eq $true) { Write-Host "The SSDPSRV service could not be found." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The SSDPSRV service could not be found."
     
     $errors++
@@ -539,7 +545,7 @@ if ($services.Value -or $override -eq $true) {
         $errors++
       }
     } else {
-      Write-Host "The startup type for SSDPSRV is already set to Automatic."
+      if ($verbose -eq $true) { Write-Host "The startup type for SSDPSRV is already set to Automatic." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The startup type for SSDPSRV is already set to Automatic."
     }
     
@@ -554,14 +560,14 @@ if ($services.Value -or $override -eq $true) {
         $errors++
       }
     } else {
-      Write-Host "The SSDPSRV service is already running."
+      if ($verbose -eq $true) { Write-Host "The SSDPSRV service is already running." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The SSDPSRV service is already running."
     }
   }
   
   # Checks to make sure the service gets pulled correctly
   if ($upnpService -eq $null) {
-    Write-Host "The upnphost service could not be found."
+    if ($verbose -eq $true) { Write-Host "The upnphost service could not be found." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The upnphost service could not be found."
     
     $errors++
@@ -577,7 +583,7 @@ if ($services.Value -or $override -eq $true) {
         $errors++
       }
     } else {
-      Write-Host "The startup type for upnphost is already set to Automatic."
+      if ($verbose -eq $true) { Write-Host "The startup type for upnphost is already set to Automatic." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The startup type for upnphost is already set to Automatic."
     }
     
@@ -592,7 +598,7 @@ if ($services.Value -or $override -eq $true) {
         $errors++
       }
     } else {
-      Write-Host "The upnphost service is already running."
+      if ($verbose -eq $true) { Write-Host "The upnphost service is already running." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The upnphost service is already running."
     }
   }
@@ -632,9 +638,6 @@ if ($fastBoot.Value -or $override -eq $true) {
       try {
         # Add the registry key and set it to 0.
         reg add $regPath /v HiberbootEnabled /t REG_DWORD /d 0 /f
-        
-        Write-Host "Successfully set the HiberbootEnabled registry key to 0 and disabled fast boot."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Successfully set the HiberbootEnabled registry key to 0 and disabled fast boot."
       } catch {
         Write-Host "Failed to set the HiberbootEnabled registry key to 0 and disable fast boot: $_"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the HiberbootEnabled registry key to 0 and disable fast boot: $_"
@@ -659,14 +662,13 @@ if ($isoMounting.Value -or $override -eq $true) {
   
   # If this is true, the key already exists. Otherwise create the key.
   if ($programmaticAccessReg) {
-    Write-Host "The ProgrammaticAccessOnly registry key already exists. ISO mounting is already disabled."
+    if ($verbose -eq $true) { Write-Host "The ProgrammaticAccessOnly registry key already exists. ISO mounting is already disabled." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The ProgrammaticAccessOnly registry key already exists. ISO mounting is already disabled."
   } 
   else {
     try {
       # This will add the registry key 'ProgrammaticAccessOnly' under the given registry path
       reg add $regPath /v ProgrammaticAccessOnly /t REG_SZ /f
-      
     } catch {
       Write-Host "Failed to set ISO mounting to not be the default action of an ISO: $_"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set ISO mounting to not be the default action of an ISO: $_"
@@ -693,20 +695,20 @@ if ($nic.Value -or $override -eq $true) {
     $AdvEEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Advanced EEE" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $GE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Green Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $ULPM = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Ultra Low Power Mode" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-    $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name).WakeOnMagicPacket # Should be "Disabled"
-    $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name).WakeOnPattern # Should be "Disabled"
-    $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name).AllowComputerToTurnOffDevice # Should be "Disabled"
+    $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket # Should be "Disabled"
+    $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnPattern # Should be "Disabled"
+    $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
     
     # Configure IPv6
     if ($IPv6 -eq $null) { 
-      Write-Host "IPv6 is not an option on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "IPv6 is not an option on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is not an option on NIC $($NIC.name)."
     } elseif ($IPv6 -eq $false) {
-      Write-Host "IPv6 is already disabled on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "IPv6 is already disabled on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is already disabled on NIC $($NIC.name)."
     } else { # Set IPv6 to disabled
       try {
-        Write-Host "Disabling IPv6 on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling IPv6 on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling IPv6 on NIC $($NIC.name)..."
         
         Set-NetAdapterBinding -Name $NIC.Name -ComponentID ms_tcpip6 -Enabled $false
@@ -720,14 +722,14 @@ if ($nic.Value -or $override -eq $true) {
     
     # Configure Wake on Magic Packet
     if ($WoMP -eq $null) { 
-      Write-Host "Wake on Magic Packet is not an option on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is not an option on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not an option on NIC $($NIC.name)."
     } elseif ($WoMP -eq 0) {
-      Write-Host "Wake on Magic Packet is already disabled on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is already disabled on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is already disabled on NIC $($NIC.name)."
     } else { # Set Wake on Magic Packet to disabled
       try {
-        Write-Host "Disabling Wake on Magic Packet on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling Wake on Magic Packet on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Wake on Magic Packet on NIC $($NIC.name)..."
         
         Set-NetAdapterAdvancedProperty -Name $NIC.name -DisplayName "Wake on Magic Packet" -RegistryValue 0
@@ -741,14 +743,14 @@ if ($nic.Value -or $override -eq $true) {
     
     # Configure Wake on Pattern
     if ($WoP -eq $null) { 
-      Write-Host "Wake on Pattern is not an option on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Wake on Pattern is not an option on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern is not an option on NIC $($NIC.name)."
     } elseif ($WoP -eq 0) {
-      Write-Host "Wake on Pattern is already disabled on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Wake on Pattern is already disabled on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern is already disabled on NIC $($NIC.name)."
     } else { # Set Wake on Pattern to disabled
       try {
-        Write-Host "Disabling Wake on Pattern on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling Wake on Pattern on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Wake on Pattern on NIC $($NIC.name)..."
         
         Set-NetAdapterAdvancedProperty -Name $NIC.name -DisplayName "Wake on pattern match" -RegistryValue 0
@@ -762,14 +764,14 @@ if ($nic.Value -or $override -eq $true) {
     
     # Configure Energy Efficient Ethernet
     if ($EEE -eq $null) { 
-      Write-Host "EEE is not an option on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "EEE is not an option on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") EEE is not an option on NIC $($NIC.name)."
     } elseif ($EEE -eq 0) {
-      Write-Host "EEE is already disabled on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "EEE is already disabled on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") EEE is already disabled on NIC $($NIC.name)."
     } else { # Set Energy Efficient Ethernet to disabled
       try {
-        Write-Host "Disabling Energy Efficient Ethernet on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling Energy Efficient Ethernet on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Energy Efficient Ethernet on NIC $($NIC.name)..."
         
         Set-NetAdapterAdvancedProperty -Name $NIC.name -DisplayName "Energy Efficient Ethernet" -RegistryValue 0
@@ -783,14 +785,14 @@ if ($nic.Value -or $override -eq $true) {
     
     # Configure Advanced EEE
     if ($AdvEEE -eq $null) { 
-      Write-Host "Advanced EEE is not an option on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Advanced EEE is not an option on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is not an option on NIC $($NIC.name)."
     } elseif ($AdvEEE -eq 0) {
-      Write-Host "Advanced EEE is already disabled on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Advanced EEE is already disabled on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is already disabled on NIC $($NIC.name)."
     } else { # Set Advanced EEE to disabled
       try {
-        Write-Host "Disabling Advanced EEE on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling Advanced EEE on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Advanced EEE on NIC $($NIC.name)..."
         
         Set-NetAdapterAdvancedProperty -Name $NIC.name -DisplayName "Advanced EEE" -RegistryValue 0
@@ -804,14 +806,14 @@ if ($nic.Value -or $override -eq $true) {
     
     # Configure Green Ethernet
     if ($GE -eq $null) { 
-      Write-Host "Green Ethernet is not an option on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Green Ethernet is not an option on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is not an option on NIC $($NIC.name)."
     } elseif ($GE -eq 0) {
-      Write-Host "Green Ethernet is already disabled on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Green Ethernet is already disabled on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is already disabled on NIC $($NIC.name)."
     } else { # Set Green Ethernet to disabled
       try {
-        Write-Host "Disabling Green Ethernet on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling Green Ethernet on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Green Ethernet on NIC $($NIC.name)..."
         
         Set-NetAdapterAdvancedProperty -Name $NIC.name -DisplayName "Green Ethernet" -RegistryValue 0
@@ -825,14 +827,14 @@ if ($nic.Value -or $override -eq $true) {
     
     # Configure Ultra Low Power Mode
     if ($ULPM -eq $null) { 
-      Write-Host "Ultra Low Power Mode is not an option on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is not an option on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not an option on NIC $($NIC.name)."
     } elseif ($ULPM -eq 0) {
-      Write-Host "Ultra Low Power Mode is already disabled on NIC $($NIC.name)."
+      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is already disabled on NIC $($NIC.name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is already disabled on NIC $($NIC.name)."
     } else { # Set Ultra Low Power Mode to disabled
       try {
-        Write-Host "Disabling Ultra Low Power Mode on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling Ultra Low Power Mode on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Ultra Low Power Mode on NIC $($NIC.name)..."
         
         Set-NetAdapterAdvancedProperty -Name $NIC.name -DisplayName "Ultra Low Power Mode" -RegistryValue 0
@@ -844,85 +846,51 @@ if ($nic.Value -or $override -eq $true) {
       }
     }
     
-    # Configure Wake on Magic Packet in the NIC power settings
-    if ($powerWoMP -eq $null) { 
-      Write-Host "Wake on Magic Packet is not an option in power settings on NIC $($NIC.name)."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not an option in power settings on NIC $($NIC.name)."
-    } elseif ($powerWoMP -eq "Disabled") {
-      Write-Host "Wake on Magic Packet is already disabled in power settings on NIC $($NIC.name)."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is already disabled in power settings on NIC $($NIC.name)."
-    } else { # Set Wake Wake on Magic Packet in the NIC power settings to Disabled
-      try {
-        Write-Host "Disabling Wake on Magic Packet in the power settings on NIC $($NIC.name)..."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Wake on Magic Packet in the power settings on NIC $($NIC.name)..."
-        
-        Set-NetAdapterPowerManagement -Name $NIC.name -WakeOnMagicPacket "Disabled"
-        $NIC | Disable-NetAdapterPowerManagement -WakeOnMagicPacket
-      } catch {
-        Write-Host "An error occurred while configuring power setting Wake on Magic Packet on NIC $($NIC.name): $_"
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while configuring power setting Wake on Magic Packet on NIC $($NIC.name): $_"
-        
-        $errors++
-      }
-    }
-    
-    # Configure Wake on Pattern in the NIC power settings
-    if ($powerWoP -eq $null) { 
-      Write-Host "Wake on Pattern is not an option in power settings on NIC $($NIC.name)."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern is not an option in power settings on NIC $($NIC.name)."
-    } elseif ($powerWoP -eq "Disabled") {
-      Write-Host "Wake on Pattern is already disabled in power settings on NIC $($NIC.name)."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern is already disabled in power settings on NIC $($NIC.name)."
-    } else { # Set Wake Wake on Pattern in the NIC power settings to Disabled
-      try {
-        Write-Host "Disabling Wake on Pattern in the power settings on NIC $($NIC.name)..."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Wake on Pattern in the power settings on NIC $($NIC.name)..."
-        
-        Set-NetAdapterPowerManagement -Name $NIC.name -WakeOnPattern "Disabled"
-        $NIC | Disable-NetAdapterPowerManagement -WakeOnPattern
-      } catch {
-        Write-Host "An error occurred while configuring power setting Wake on Pattern on NIC $($NIC.name): $_"
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while configuring power setting Wake on Pattern on NIC $($NIC.name): $_"
-        
-        $errors++
-      }
-    }
-    
-    # Configure the Allow computer to turn off device option in the NIC power settings
-    if ($powerSaving -eq $null) {
-      Write-Host "Allow computer to turn off device is not an option on NIC $($NIC.name)."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Allow computer to turn off device is not an option on NIC $($NIC.name)."
-    } elseif ($powerSaving -eq "Disabled") {
-      Write-Host "Allow computer to turn off device is already disabled on NIC $($NIC.name)."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Allow computer to turn off device is already disabled on NIC $($NIC.name)."
+    # Configure Power Management
+    if ($powerWoMP -eq "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is already disabled on NIC $($NIC.name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is already disabled on NIC $($NIC.name)."
     } else {
       try {
-        Write-Host "Disabling the Allow computer to turn off device option in the power settings on NIC $($NIC.name)..."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling the Allow computer to turn off device option in the power settings on NIC $($NIC.name)..."
+        if ($verbose -eq $true) { Write-Host "Disabling Wake on Magic Packet on NIC $($NIC.name)..." }
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Wake on Magic Packet on NIC $($NIC.name)..."
         
-        # Temp variable used to change the setting
-        $setting = $NIC | Get-NetAdapterPowerManagement
-        $setting.AllowComputerToTurnOffDevice = 'Disabled'
-        $setting | Set-NetAdapterPowerManagement
+        Set-NetAdapterPowerManagement -Name $NIC.name -WakeOnMagicPacket Disabled
       } catch {
-        Write-Host "An error occurred while configuring the Allow computer to turn off device option setting on NIC $($NIC.name): $_"
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while configuring the Allow computer to turn off device option setting on NIC $($NIC.name): $_"
+        Write-Host "An error occurred while disabling Wake on Magic Packet on NIC $($NIC.name): $_"
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while disabling Wake on Magic Packet on NIC $($NIC.name): $_"
         
         $errors++
       }
     }
+    
+    # Set Power Saving
+    if ($powerSaving -eq "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Power Saving is already disabled on NIC $($NIC.name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Saving is already disabled on NIC $($NIC.name)."
+    } else {
+      try {
+        if ($verbose -eq $true) { Write-Host "Disabling Power Saving on NIC $($NIC.name)..." }
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Power Saving on NIC $($NIC.name)..."
+        
+        Set-NetAdapterPowerManagement -Name $NIC.name -AllowComputerToTurnOffDevice Disabled
+      } catch {
+        Write-Host "An error occurred while disabling Power Saving on NIC $($NIC.name): $_"
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while disabling Power Saving on NIC $($NIC.name): $_"
+        
+        $errors++
+      }
+    }
+    
+    # Increment the error count if necessary
+    if ($errors -gt 0) {
+      Write-Host "There were errors configuring the NIC $($NIC.name)."
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") There were errors configuring the NIC $($NIC.name)."
+    } else {
+      Write-Host "The NIC $($NIC.name) was successfully configured."
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The NIC $($NIC.name) was successfully configured."
+    }
   }
-  
-  if ($errors -eq 0) {
-    Write-Host "Finished configuring all NICs with 0 errors."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Finished configuring all NICs with 0 errors."
-  } else {
-    Write-Host "$errors errors occurred while configuring the NIC(s)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors errors occurred while configuring the NIC(s)."
-  }
-
-  # Put device in pending reboot state.
-  Enable-PendingReboot
 }
 
 if ($usb.Value -or $override -eq $true) { 
@@ -977,7 +945,7 @@ if ($adobe.Value -or $override -eq $true) {
     # If the registry key doesn't exist, create it.
     if ($32BitAdminRegKey -eq $null -or $32BitAdminRegKey.$32BitExePath -ne "RUNASADMIN") {
       try {
-       reg add $32BitAdminRegKey /v $32BitExePath /t REG_SZ /d "RUNASADMIN" /f 
+       reg add $regPath /v $32BitExePath /t REG_SZ /d "RUNASADMIN" /f 
       } catch {
         Write-Host "Failed to add the RUNASADMIN registry key: $_"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to add the RUNASADMIN registry key: $_"
@@ -1004,7 +972,7 @@ if ($adobe.Value -or $override -eq $true) {
       # If the registry key doesn't exist, create it.
     if ($64BitAdminRegKey -eq $null -or $64BitAdminRegKey.$64BitExePath -ne "RUNASADMIN") {
       try {
-       reg add $64BitAdminRegKey /v $64BitExePath /t REG_SZ /d "RUNASADMIN" /f 
+       reg add $regPath /v $64BitExePath /t REG_SZ /d "RUNASADMIN" /f 
       } catch {
         Write-Host "Failed to add the RUNASADMIN registry key: $_"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to add the RUNASADMIN registry key: $_"
@@ -1031,4 +999,43 @@ if ($adobe.Value -or $override -eq $true) {
     Write-Host "Adobe is not installed or is not installed under the usual file path."
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not installed or is not installed under the usual file path."
   }
+}
+
+if ($ucpd.Value -or $override -eq $true) {
+  Write-Host "Disabling the User Choice Protection Driver..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling the User Choice Protection Driver..."
+
+  # Get the current state of the registry key
+  $UCPDRegistry = Get-ItemProperty -Path “HKLM:\SYSTEM\CurrentControlSet\Services\UCPD” -Name “Start” -ErrorAction SilentlyContinue
+
+  # Set the registry key if it exists. If the key doesn't exist, we shouldn't have to worry about it.
+  if ($UCPDRegistry -and $UCPDRegistry.Start -ne 4) {
+    try {
+	    New-ItemProperty -Path “HKLM:\SYSTEM\CurrentControlSet\Services\UCPD” -Name “Start” -Value 4 -PropertyType DWORD -Force
+    } catch {
+	    Write-Host "Failed to set the UCPD Start registry key: $_"
+	    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the UCPD Start registry key: $_"
+    }
+  } elseif (-not $UCPDRegistry) {
+    if ($verbose -eq $true) { Write-Host "The UCPD driver doesn't exist." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver doesn't exist."
+  }
+
+  # Get the current state of the scheduled task.
+  $UCPDTask = Get-ScheduledTask -TaskPath "\Microsoft\Windows\AppxDeploymentClient\" -TaskName "UCPD velocity" -ErrorAction SilentlyContinue
+
+  # Disable the scheduled task if it exists.
+  if ($UCPDTask -and $UCPDTask.State -ne "Disabled" ) {
+    try {
+	    Disable-ScheduledTask -TaskPath "\Microsoft\Windows\AppxDeploymentClient\" -TaskName "UCPD velocity" -ErrorAction Continue
+    } catch {
+	    Write-Host "Failed to disable the UCPD velocity scheduled task: $_"
+	    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to disable the UCPD velocity scheduled task: $_"
+    } 
+  } elseif (-not $UCPDTask) {
+    if ($verbose -eq $true) { Write-Host "The UCPD driver scheduled task doesn't exist." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver scheduled task doesn't exist."
+  }
+
+  Enable-PendingReboot
 }

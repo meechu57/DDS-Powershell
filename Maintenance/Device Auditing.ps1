@@ -1,7 +1,10 @@
-# The log path for this script
+# The log path for this script.
 $logPath = "C:\DDS\Logs\Audit.log"
 
-# The end result string
+# Convert the script variable to a local variable.
+$verbose = $env:verbose
+
+# The end result string.
 $results = ""
 
 Write-Host "Running the monthly auditing..."
@@ -21,69 +24,55 @@ if ($battery -and $battery.name -notlike "*UPS*") {
 function Audit-LogFiles {
   # For error tracking
   $errors = 0
+
+  Write-Host "Auditing Log files..."
   
   # Looking for the script. If it doesn't exist, track the error.
-  if(Test-Path 'C:\DDS\Logs\Scripts.log') {
-    Write-Host "The Scripts.log file exists."
+  if (Test-Path 'C:\DDS\Logs\Scripts.log') {
+    if ($verbose -eq $true) { Write-Host "The Scripts.log file exists." }
   } else {
     Write-Host "Couldn't find the Scripts.log file. Manual investigation is required."
-    
     $errors++
   }
   
   # Looking for the script. If it doesn't exist, track the error.
-  if(Test-Path 'C:\DDS\Logs\Maintenance.log') {
-     Write-Host "The Maintenance.log file exists."
+  if (Test-Path 'C:\DDS\Logs\Maintenance.log') {
+    if ($verbose -eq $true) { Write-Host "The Maintenance.log file exists." }
   } else {
-     Write-Host "Couldn't find the Maintenance.log file. Manual investigation is required."
-    
+    Write-Host "Couldn't find the Maintenance.log file. Manual investigation is required."
     $errors++
   }
    
   # Looking for the script. If it doesn't exist, track the error.
-  if(Test-Path 'C:\DDS\Logs\Staging.log') {
-     Write-Host "The Staging.log file exists."
+  if (Test-Path 'C:\DDS\Logs\Staging.log') {
+    if ($verbose -eq $true) { Write-Host "The Staging.log file exists." }
   } else {
-     Write-Host "Couldn't find the Staging.log file. Manual investigation is required."
-    
+    Write-Host "Couldn't find the Staging.log file. Manual investigation is required."
     $errors++
   }
    
   # Looking for the script. If it doesn't exist, track the error.
-  if(Test-Path 'C:\DDS\Logs\Audit.log') {
-     Write-Host "The Audit.log file exists."
+  if (Test-Path 'C:\DDS\Logs\Audit.log') {
+    if ($verbose -eq $true) { Write-Host "The Audit.log file exists." }
   } else {
-     Write-Host "Couldn't find the Audit.log file. Manual investigation is required."
-    
+    Write-Host "Couldn't find the Audit.log file. Manual investigation is required."
     $errors++
   }
   
   # Looking for the script. If it doesn't exist, track the error.
-  if(Test-Path "C:\DDS\Logs\Scheduled Automation.log") {
-     Write-Host "The Scheduled Automation.log file exists."
+  if (Test-Path "C:\DDS\Logs\Scheduled Automation.log") {
+    if ($verbose -eq $true) { Write-Host "The Scheduled Automation.log file exists." }
   } else {
-     Write-Host "Couldn't find the Scheduled Automation.log file. Manual investigation is required."
-    
+    Write-Host "Couldn't find the Scheduled Automation.log file. Manual investigation is required."
     $errors++
-  }
-   
-  # Looking for the old script log file. Delete it if it exists.
-  if(Test-Path "C:\Program Files\NinjaRemote\Script Log.log") {
-    try {
-      Remove-Item "C:\Program Files\NinjaRemote\Script Log.log"
-    } catch {
-      Write-Host "Failed to remove the old Script Log.log file"
-    }
   }
   
   # If errors are 0, all files exist. If more than 0, more than one log doesn't exist.
   if ($errors -eq 0) {
     Write-Host "All log files exist."
-    
     return $true
   } else {
     Write-Host "$errors log file(s) don't exist. Manual investigation is required."
-    
     return $false
   }
 }
@@ -100,8 +89,8 @@ function Audit-ModernStandby {
   
   # If the registry key doesn't exist, it'll be null.
   if ($overridgeRegKey -eq $null -and $isLaptop -eq 0) {
-    Write-Host "The registry key for Modern Standby doesn't exist."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The registry key for Modern Standby doesn't exist."
+    Write-Host "Modern Standby is not disabled."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Modern Standby is not disabled."
     
     return $false
   } # If the registry key does exist isn't 0, Modern Standby isn't disabled.
@@ -114,8 +103,8 @@ function Audit-ModernStandby {
     } 
     else {
       if ($isLaptop) {
-        Write-Host "Laptop detected. Modern Standby is enabled and is set correctly."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected. Modern Standby is enabled and is set correctly."
+        Write-Host "Laptop detected. Modern Standby is enabled and set correctly."
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected. Modern Standby is enabled and set correctly."
         
         return $true
       } else {
@@ -169,14 +158,14 @@ function Audit-PowerOptions {
   $hibernateVerification = $null
   
   # Start of verification in the log
-  Write-Host "Auditing the power options..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the power options..." 
+  Write-Host "Auditing Power Options..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Power Options..." 
   
   # Verify the results of the SUB_SLEEP GUID
   foreach ($i in $subSleep) {
     $index = powercfg /qh SCHEME_CURRENT SUB_SLEEP $i | Select-String -Pattern "Power Setting Index: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
     if ($index[0] -ne '0x00000000' -or $index[1] -ne '0x00000000') {
-      Write-Host "WARNING! The $i power setting was not set correctly. Manual investigation required."
+      if ($verbose -eq $true) { Write-Host "WARNING! The $i power setting was not set correctly. Manual investigation required." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") WARNING! The $i power setting was not set correctly. Manual investigation required."
       
       $subSleepVerification = $false
@@ -191,7 +180,7 @@ function Audit-PowerOptions {
   foreach ($i in $usb) {
    $index = powercfg /qh SCHEME_CURRENT $usbSubGUID $i | Select-String -Pattern "Power Setting Index: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
    if ($index[0] -ne '0x00000000' -or $index[1] -ne '0x00000000') {
-      Write-Host "WARNING! One of the USB setting was not set correctly. Manual investigation required."
+      if ($verbose -eq $true) { Write-Host "WARNING! One of the USB setting was not set correctly. Manual investigation required." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") WARNING! One of the USB setting was not set correctly. Manual investigation required."
      
       $usbErrors++
@@ -206,14 +195,14 @@ function Audit-PowerOptions {
   # Verify the results of VIDEOIDLE
   $index = powercfg /qh SCHEME_CURRENT SUB_VIDEO VIDEOIDLE | Select-String -Pattern "Power Setting Index: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
   if ($index[0] -ne '0x00001518' -or $index[1] -ne '0x00001518') {
-    Write-Host "WARNING! The VIDEOIDLE power setting was not set to 90 minutes. You may want to change this!"
+    if ($verbose -eq $true) { Write-Host "WARNING! The VIDEOIDLE power setting was not set to 90 minutes. You may want to change this!" }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") WARNING! The VIDEOIDLE power setting was not set to 90 minutes. You may want to change this!"
   }
   
   # Verify the results of DISKIDLE
   $index = powercfg /qh SCHEME_CURRENT SUB_DISK DISKIDLE | Select-String -Pattern "Power Setting Index: (.*)" | ForEach-Object { $_.Matches.Groups[1].Value }
   if ($index[0] -ne '0x00000000' -or $index[1] -ne '0x00000000') {
-    Write-Host "WARNING! The DISKIDLE power setting was not set correctly. Manual investigation required."
+    if ($verbose -eq $true) { Write-Host "WARNING! The DISKIDLE power setting was not set correctly. Manual investigation required." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") WARNING! The DISKIDLE power setting was not set correctly. Manual investigation required."
     
     $diskVerification = $false
@@ -225,7 +214,7 @@ function Audit-PowerOptions {
   $regPath = "HKLM\SYSTEM\CurrentControlSet\Control\Power"
   $hibernateRegKey = Get-ItemProperty -Path "Registry::$regPath" -Name HibernateEnabled -ErrorAction SilentlyContinue
   if ($hibernateRegKey.HibernateEnabled -ne 0 -and $isLaptop -eq 0) {
-    Write-Host "WARNING! Hibernation is not disabled. Manual investigation required."
+    if ($verbose -eq $true) { Write-Host "WARNING! Hibernation is not disabled. Manual investigation required." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") WARNING! Hibernation is not disabled. Manual investigation required."
     
     $hibernateVerification = $false
@@ -240,8 +229,8 @@ function Audit-PowerOptions {
     
     return $true
   } else {
-    Write-Host "WARNING! One or more power setting was not set properly. Manual investigation required."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") WARNING! One or more power setting was not set properly. Manual investigation required."
+    Write-Host "One or more power setting was not set properly. Manual investigation required."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") One or more power setting was not set properly. Manual investigation required."
     
     return $false
   }
@@ -252,17 +241,19 @@ function Audit-WindowsFirewall {
   $errors = 0
   
   # Get the values of the 'Enabled' property for all three firewalls listed in the Get-NetFirewallProfile cmdlet.
-  $firewallProfiles = Get-NetFirewallProfile | Select-Object -ExpandProperty Enabled
+  $firewalls = Get-NetFirewallProfile | Select-Object Name, Enabled
   
   # Ensure that we grabbed the values above correctly
-  if ($firewallProfiles -ne $null) {
-  
+  if ($firewalls) {
     Write-Host "Auditing Windows Firewall..."
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Windows Firewall..."
   
-    # Check to see if any of the values in $firewallProfiles are 'True'
-    foreach ($i in $firewallProfiles) {
-      if ($i -ne "False") {
+    # Check to see if any of the values in $firewalls are 'True'
+    foreach ($firewall in $firewalls) {
+      if ($firewall.enabled -ne "False") {
+        if ($verbose -eq $true) { Write-Host "The $($firewall.Name) firewall is enabled." }
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The $($firewall.Name) firewall is enabled."
+
         $errors++
       }
     }
@@ -288,13 +279,13 @@ function Audit-TimeZone {
   # Gets the currently set time zone
   $timeZone = [System.TimeZoneInfo]::Local.id
   
-  Write-Host "Auditing the time zone..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the time zone..."
+  Write-Host "Auditing Time Zone..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Time Zone..."
   
   # Time zone should be set to EST
   if ($timeZone -eq "Eastern Standard Time") {
-    Write-Host "Time zone is set correctly. Current time zone is set to $($timeZone)"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Time zone is set correctly. Current time zone is set to $($timeZone)"
+    Write-Host "Time zone is set correctly."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Time zone is set correctly"
     
     return $true
   }
@@ -307,6 +298,9 @@ function Audit-TimeZone {
 }
 
 function Audit-Services {
+  Write-Host "Auditing Services..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Services..."
+
   # Pulls the services to variables for use later
   $fdrpService = Get-Service -name FDResPub
   $ssdpService = Get-Service -name SSDPSRV
@@ -317,7 +311,7 @@ function Audit-Services {
   
   # Test to make sure the service gets pulled correctly
   if ($fdrpService -eq $null) {
-    Write-Host "The FDResPub service could not be found."
+    if ($verbose -eq $true) { Write-Host "The FDResPub service could not be found." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The FDResPub service could not be found."
     
     $errors++
@@ -325,7 +319,7 @@ function Audit-Services {
   else {
     # If the service isn't set to Automatic or isn't running, it isn't configured properly
     if ($fdrpService.StartType -ne 'Automatic' -or $fdrpService.Status -ne 'Running') {
-      Write-Host "The FDResPub service is not configured properly. Manual investigation is required."
+      if ($verbose -eq $true) { Write-Host "The FDResPub service is not configured properly. Manual investigation is required." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The FDResPub service is not configured properly. Manual investigation is required."
       
       $errors++
@@ -334,7 +328,7 @@ function Audit-Services {
   
   # Test to make sure the service gets pulled correctly
   if ($ssdpService -eq $null) {
-    Write-Host "The SSDPSRV service could not be found."
+    if ($verbose -eq $true) { Write-Host "The SSDPSRV service could not be found." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The SSDPSRV service could not be found."
     
     $errors++
@@ -342,7 +336,7 @@ function Audit-Services {
   else {
     # If the service isn't set to Automatic or isn't running, it isn't configured properly
     if ($ssdpService.StartType -ne 'Automatic' -or $ssdpService.Status -ne 'Running') {
-      Write-Host "The SSDPSRV service is not configured properly. Manual investigation is required."
+      if ($verbose -eq $true) { Write-Host "The SSDPSRV service is not configured properly. Manual investigation is required." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The SSDPSRV service is not configured properly. Manual investigation is required."
       
       $errors++
@@ -351,7 +345,7 @@ function Audit-Services {
   
   # Test to make sure the service gets pulled correctly
   if ($upnpService -eq $null) {
-    Write-Host "The upnphost service could not be found."
+    if ($verbose -eq $true) { Write-Host "The upnphost service could not be found." }
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The upnphost service could not be found."
     
     $errors++
@@ -359,7 +353,7 @@ function Audit-Services {
   else {
     # If the service isn't set to Automatic or isn't running, it isn't configured properly
     if ($upnpService.StartType -ne 'Automatic' -or $upnpService.Status -ne 'Running') {
-      Write-Host "The upnphost service is not configured properly. Manual investigation is required."
+      if ($verbose -eq $true) { Write-Host "The upnphost service is not configured properly. Manual investigation is required." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The upnphost service is not configured properly. Manual investigation is required."
       
       $errors++
@@ -391,20 +385,20 @@ function Audit-FastBoot {
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Fast Boot..."
   
   if ($hiberbootRegKey -eq $null) {
-    Write-Host "The HiberBootEnabled registry key doesn't exist. Fast boot may not be disabled. Manual investigation is required."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The HiberBootEnabled registry key doesn't exist. Fast boot may not be disabled. Manual investigation is required."
+    Write-Host "Fast boot is not disabled."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Fast boot is not disabled."
     
     return $false
   }
   elseif ($hiberbootRegKey.HiberbootEnabled -eq 0) {
-    Write-Host "The HiberBootEnabled registry key exists and is correctly set. Fast Boot is disabled."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The HiberBootEnabled registry key exists and is correctly set. Fast Boot is disabled."
+    Write-Host "Fast Boot is disabled."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Fast Boot is disabled."
     
     return $true
   }
   else {
-    Write-Host "The HiberBootEnabled registry key exists but is not correctly set. Fast boot may not be disabled. Manual investigation is required."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The HiberBootEnabled registry key but is not correctly set. Fast boot may not be disabled. Manual investigation is required."
+    Write-Host "Fast boot is not disabled."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Fast boot is not disabled."
     
     return $false
   }
@@ -417,199 +411,181 @@ function Audit-IsoMounting {
   # Gets the value of the ProgrammaticAccessOnly registry key
   $programmaticAccessReg = Get-ItemProperty -Path "Registry::$regPath" -Name ProgrammaticAccessOnly -ErrorAction SilentlyContinue
   
-  Write-Host "Auditing the configuration of ISO Mounting..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the configuration of ISO Mounting..."
+  Write-Host "Auditing ISO Mounting..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing ISO Mounting..."
   
   if ($programmaticAccessReg -eq $null) {
-    Write-Host "ISO mounting is not disabled."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") ISO mounting is not disabled."
+    Write-Host "ISO Mounting is not disabled."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") ISO Mounting is not disabled."
     
     return $false
   } 
   else {
-    Write-Host "ISO mounting is disabled."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") ISO mounting is disabled."
+    Write-Host "ISO Mounting is disabled."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") ISO Mounting is disabled."
     
     return $true
   }
 }
 
 function Audit-NicConfiguration {
-# Get the physical NIC(s). Ignore wireless NICs.
-$NICs = Get-NetAdapter -Physical | Where-Object {$_.Name -notmatch "Wi-Fi|Wireless"}
+  # Get the physical NIC(s). Ignore wireless NICs.
+  $NICs = Get-NetAdapter -Physical | Where-Object {$_.Name -notmatch "Wi-Fi|Wireless"}
 
-# For error tracking. Should only be incremented if any of the below variables are Null.
-$errors = 0
+  # For error tracking. Should only be incremented if any of the below variables are Null.
+  $errors = 0
 
-Write-Host "Auditing the configuration of the NIC(s)..."
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the configuration of the NIC(s)..."
+  Write-Host "Auditing the configuration of the NIC(s)..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the configuration of the NIC(s)..."
 
-# Configure all NIC(s)
-foreach ($NIC in $NICs) {
-  $IPv6 = (Get-NetAdapterBinding -Name $NIC.Name -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue).Enabled # Should be false
-  $WoMP = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Wake on Magic Packet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-  $WoP = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Wake on pattern match" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-  $EEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Energy Efficient Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-  $AdvEEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Advanced EEE" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-  $GE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Green Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-  $ULPM = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Ultra Low Power Mode" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-  $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name).WakeOnMagicPacket # Should be "Disabled"
-  $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name).WakeOnPattern # Should be "Disabled"
-  $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name).AllowComputerToTurnOffDevice # Should be "Disabled"
-  
-  # Should be false for IPv6 to be disabled on the NIC
-  if($IPv6 -eq $false) {
-    Write-Host "IPv6 is correctly configured on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is correctly configured on NIC: $($NIC.Name)."
-  } elseif ($IPv6 -eq $null -or $IPv6 -eq "Unsupported") {
-    Write-Host "IPv6 is not an option on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is not an option on NIC: $($NIC.Name)."
-  } elseif ($IPv6 -ne $false) {
-    Write-Host "IPv6 is not disabled on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is not disabled on NIC: $($NIC.Name)."
-  
-    $errors++
-  }
-  
-  # Should be set to 0 for Wake on Magic Packet to be disabled on the NIC.
-  if ($WoMP -eq 0) {
-    Write-Host "Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)."
-  } elseif ($WoMP -eq $null -or $WoMP -eq "Unsupported") {
-    Write-Host "Wake on Magic Packet is not an option on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not an option on NIC: $($NIC.Name)."
-  } elseif ($WoMP -ne 0) {
-    Write-Host "Wake on Magic Packet is not disabled on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not disabled on NIC: $($NIC.Name)."
+  # Configure all NIC(s)
+  foreach ($NIC in $NICs) {
+    $IPv6 = (Get-NetAdapterBinding -Name $NIC.Name -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue).Enabled # Should be false
+    $WoMP = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Wake on Magic Packet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $WoP = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Wake on pattern match" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $EEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Energy Efficient Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $AdvEEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Advanced EEE" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $GE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Green Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $ULPM = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Ultra Low Power Mode" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket # Should be "Disabled"
+    $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnPattern # Should be "Disabled"
+    $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
     
-    $errors++
-  }
-  
-  # Should be set to 0 for Wake on Pattern Match to be disabled on the NIC.
-  if ($WoP -eq 0) {
-    Write-Host "Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)."
-  } elseif ($WoP -eq $null -or $WoP -eq "Unsupported") {
-    Write-Host "Wake on Pattern Match is not an option on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is not an option on NIC: $($NIC.Name)."
-  } elseif ($WoP -ne 0) {
-    Write-Host "Wake on Pattern Match is not disabled on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is not disabled on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-  
-  # Should be set to 0 for Energy Efficient Ethernet to be disabled on the NIC.
-  if ($EEE -eq 0) {
-    Write-Host "Energy Efficient Ethernet is correctly configured on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is correctly configured on NIC: $($NIC.Name)."
-  } elseif ($EEE -eq $null -or $EEE -eq "Unsupported") {
-    Write-Host "Energy Efficient Ethernet is not an option on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is not an option on NIC: $($NIC.Name)."
-  } elseif ($EEE -ne 0) {
-    Write-Host "Energy Efficient Ethernet is not disabled on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is not disabled on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-  
-  # Should be set to 0 for Advanced EEE to be disabled on the NIC.
-  if ($AdvEEE -eq 0) {
-    Write-Host "Advanced EEE is correctly configured on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is correctly configured on NIC: $($NIC.Name)."
-  } elseif ($AdvEEE -eq $null -or $AdvEEE -eq "Unsupported") {
-    Write-Host "Advanced EEE is not an option on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is not an option on NIC: $($NIC.Name)."
-  } elseif ($AdvEEE -ne 0) {
-    Write-Host "Advanced EEE is not disabled on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is not disabled on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-  
-  # Should be set to 0 for Green Ethernet to be disabled on the NIC.
-  if ($GE -eq 0) {
-    Write-Host "Green Ethernet is correctly configured on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is correctly configured on NIC: $($NIC.Name)."
-  } elseif ($GE -eq $null -or $GE -eq "Unsupported") {
-    Write-Host "Green Ethernet is not an option on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is not an option on NIC: $($NIC.Name)."
-  } elseif ($GE -ne 0) {
-    Write-Host "Green Ethernet is not disabled on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is not disabled on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-  
-  # Should be set to 0 for Ultra Low Power Mode to be disabled on the NIC.
-  if ($ULPM -eq 0) {
-    Write-Host "Ultra Low Power Mode is correctly configured on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is correctly configured on NIC: $($NIC.Name)."
-  } elseif ($ULPM -eq $null -or $ULPM -eq "Unsupported") {
-    Write-Host "Ultra Low Power Mode is not an option on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not an option on NIC: $($NIC.Name)."
-  } elseif ($ULPM -ne 0) {
-    Write-Host "Ultra Low Power Mode is not disabled on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not disabled on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-  
-  # Should be set to Disabled for Wake on Magic Packet to be disabled in power settings on the NIC.
-  if ($powerWoMP -eq "Disabled") {
-    Write-Host "Wake on Magic Packet is correctly configured in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is correctly configured in power settings on NIC: $($NIC.Name)."
-  } elseif ($powerWoMP -eq $null -or $powerWoMP -eq "Unsupported") {
-    Write-Host "Wake on Magic Packet is not an option in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not an option in power settings on NIC: $($NIC.Name)."
-  } elseif ($powerWoMP -ne "Disabled") {
-    Write-Host "Wake on Magic Packet is not disabled in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not disabled in power settings on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-  
-  # Should be set to Disabled for Wake on Pattern to be disabled in power settings on the NIC.
-  if ($powerWoP -eq "Disabled") {
-    Write-Host "Wake on Pattern is correctly configured in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern is correctly configured in power settings on NIC: $($NIC.Name)."
-  } elseif ($powerWoP -eq $null -or $powerWoP -eq "Unsupported") {
-    Write-Host "Wake on Pattern is not an option in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern is not an option in power settings on NIC: $($NIC.Name)."
-  } elseif ($powerWoP -ne "Disabled") {
-    Write-Host "Wake on Pattern is not disabled in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern is not disabled in power settings on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-  
-  # Should be set to Disabled for Allow Computer To Turn Off Device to be disabled in power settings on the NIC.
-  if ($powerSaving -eq "Disabled") {
-    Write-Host "Allow Computer To Turn Off Device is correctly configured in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Allow Computer To Turn Off Device is correctly configured in power settings on NIC: $($NIC.Name)."
-  } elseif ($powerSaving -eq $null -or $powerSaving -eq "Unsupported") {
-    Write-Host "Allow Computer To Turn Off Device is not an option in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Allow Computer To Turn Off Device is not an option in power settings on NIC: $($NIC.Name)."
-  } elseif ($powerSaving -ne "Disabled") {
-    Write-Host "Allow Computer To Turn Off Device is not disabled in power settings on NIC: $($NIC.Name)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Allow Computer To Turn Off Device is not disabled in power settings on NIC: $($NIC.Name)."
-  	
-    $errors++
-  }
-}
-  
-  # If no errors, all NICs are configured properly.
-  if ($errors -eq 0) {
-    Write-Host "All NICs are configured properly."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") All NICs are configured properly."
+    # Should be false for IPv6 to be disabled on the NIC
+    if($IPv6 -eq $false) {
+      if ($verbose -eq $true) { Write-Host "IPv6 is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($IPv6 -eq $null -or $IPv6 -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "IPv6 is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is not an option on NIC: $($NIC.Name)."
+    } elseif ($IPv6 -ne $false) {
+      if ($verbose -eq $true) { Write-Host "IPv6 is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
     
-    return $true
-  }
-  else {
-    Write-Host "Errors were found in the configuration of the NIC(s). Number of errors found: $errors."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Errors were found in the configuration of the NIC(s). Number of errors found: $errors."
+    # Should be set to 0 for Wake on Magic Packet to be disabled on the NIC.
+    if ($WoMP -eq 0) {
+      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($WoMP -eq $null -or $WoMP -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not an option on NIC: $($NIC.Name)."
+    } elseif ($WoMP -ne 0) {
+      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
     
-    return $false
+    # Should be set to 0 for Wake on Pattern Match to be disabled on the NIC.
+    if ($WoP -eq 0) {
+      if ($verbose -eq $true) { Write-Host "Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($WoP -eq $null -or $WoP -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "Wake on Pattern Match is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is not an option on NIC: $($NIC.Name)."
+    } elseif ($WoP -ne 0) {
+      if ($verbose -eq $true) { Write-Host "Wake on Pattern Match is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+    
+    # Should be set to 0 for Energy Efficient Ethernet to be disabled on the NIC.
+    if ($EEE -eq 0) {
+      if ($verbose -eq $true) { Write-Host "Energy Efficient Ethernet is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($EEE -eq $null -or $EEE -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "Energy Efficient Ethernet is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is not an option on NIC: $($NIC.Name)."
+    } elseif ($EEE -ne 0) {
+      if ($verbose -eq $true) { Write-Host "Energy Efficient Ethernet is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+    
+    # Should be set to 0 for Advanced EEE to be disabled on the NIC.
+    if ($AdvEEE -eq 0) {
+      if ($verbose -eq $true) { Write-Host "Advanced EEE is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($AdvEEE -eq $null -or $AdvEEE -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "Advanced EEE is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is not an option on NIC: $($NIC.Name)."
+    } elseif ($AdvEEE -ne 0) {
+      if ($verbose -eq $true) { Write-Host "Advanced EEE is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+    
+    # Should be set to 0 for Green Ethernet to be disabled on the NIC.
+    if ($GE -eq 0) {
+      if ($verbose -eq $true) { Write-Host "Green Ethernet is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($GE -eq $null -or $GE -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "Green Ethernet is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is not an option on NIC: $($NIC.Name)."
+    } elseif ($GE -ne 0) {
+      if ($verbose -eq $true) { Write-Host "Green Ethernet is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+    
+    # Should be set to 0 for Ultra Low Power Mode to be disabled on the NIC.
+    if ($ULPM -eq 0) {
+      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($ULPM -eq $null -or $ULPM -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not an option on NIC: $($NIC.Name)."
+    } elseif ($ULPM -ne 0) {
+      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+
+    # Power Management settings
+    if ($powerWoMP -eq "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Power Management Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($powerWoMP -eq $null) {
+      if ($verbose -eq $true) { Write-Host "Power Management Wake on Magic Packet is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Magic Packet is not an option on NIC: $($NIC.Name)."
+    } elseif ($powerWoMP -ne "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Power Management Wake on Magic Packet is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Magic Packet is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+
+    if ($powerWoP -eq "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Power Management Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($powerWoP -eq $null) {
+      if ($verbose -eq $true) { Write-Host "Power Management Wake on Pattern Match is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Pattern Match is not an option on NIC: $($NIC.Name)."
+    } elseif ($powerWoP -ne "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Power Management Wake on Pattern Match is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Pattern Match is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+
+    if ($powerSaving -eq "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Power Management Allow Computer to Turn Off Device is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Allow Computer to Turn Off Device is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($powerSaving -eq $null) {
+      if ($verbose -eq $true) { Write-Host "Power Management Allow Computer to Turn Off Device is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Allow Computer to Turn Off Device is not an option on NIC: $($NIC.Name)."
+    } elseif ($powerSaving -ne "Disabled") {
+      if ($verbose -eq $true) { Write-Host "Power Management Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+  }
+
+  if ($errors -gt 0) {
+    Write-Host "$errors errors found in the configuration of the NIC(s)."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors errors found in the configuration of the NIC(s)."
+  } else {
+    Write-Host "All NIC configurations are correctly audited."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") All NIC configurations are correctly audited."
   }
 }
 
@@ -638,12 +614,12 @@ function Audit-UsbSettings {
   
     # Looking to see if the power settings are enabled for the USB devices/controllers
     foreach ($i in $usbDevices) {
-        if ($i.Name -notlike "*USB GbE*") {
-            Write-Host "The following USB device isn't properly configured: $($i.Name)"
-            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following USB device isn't properly configured: $($i.Name)"
-      
-            $usbErrors++
-        }
+      if ($i.Name -notlike "*USB GbE*") {
+        if ($verbose -eq $true) { Write-Host "The following USB device isn't properly configured: $($i.Name)" }
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following USB device isn't properly configured: $($i.Name)"
+  
+        $usbErrors++
+      }
     }
   
   # If either of the variables are more than 0, 1 or more USB device or controller doesn't have their power option disabled.
@@ -676,49 +652,110 @@ function Audit-Adobe {
   Write-Host "Auditing Adobe..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Adobe..."
   
-    # Test for the 32 vs 64 bit version of Adobe.
-    if (Test-Path $32BitExePath) {
-        Write-Host "32-bit Adobe was found."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 32-bit Adobe was found."
+  # Test for the 32 vs 64 bit version of Adobe.
+  if (Test-Path $32BitExePath) {
+    if ($verbose -eq $true) { Write-Host "32-bit Adobe was found."}
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 32-bit Adobe was found."
 
-        # Check the registry key to make sure it exists and is set correctly. 
-        if ($32BitAdminRegKey -ne $null -and $32BitAdminRegKey.'C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe' -eq "RUNASADMIN") {
-            Write-Host "Adobe 32-bit is correctly configured to run as admin for all users."
-            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe 32-bit is correctly configured to run as admin for all users."
-  
-            return $true
-        }
-        else {
-            Write-Host "Adobe is not correctly configured to run as admin for all users."
-            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not correctly configured to run as admin for all users."
-  
-            return $false
-        }
-    } 
-    elseif (Test-Path $64BitExePath) {
-        Write-Host "64-bit Adobe was found."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 64-bit Adobe was found."
+    # Check the registry key to make sure it exists and is set correctly. 
+    if ($32BitAdminRegKey -ne $null -and $32BitAdminRegKey.'C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe' -eq "RUNASADMIN") {
+      Write-Host "Adobe 32-bit is correctly configured to run as admin for all users."
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe 32-bit is correctly configured to run as admin for all users."
 
-        if ($64BitAdminRegKey -ne $null -and $64BitAdminRegKey.'C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe' -eq "RUNASADMIN") {
-            Write-Host "Adobe 64-bit is correctly configured to run as admin for all users."
-            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe 64-bit is correctly configured to run as admin for all users."
-  
-            return $true
-        }
-        else {
-            Write-Host "Adobe is not correctly configured to run as admin for all users."
-            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not correctly configured to run as admin for all users."
-  
-            return $false
-        }
+      return $true
     }
     else {
-        # Do a more thorough test to find an exe?
-        Write-Host "Adobe could not be found in its usual install pathway. Adobe is not installed or an old version of Adobe is installed."
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 6Adobe could not be found in its usual install pathway. Adobe is not installed or an old version of Adobe is installed."
+      Write-Host "Adobe is not correctly configured to run as admin for all users."
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not correctly configured to run as admin for all users."
 
-        return $false
+      return $false
     }
+  } 
+  elseif (Test-Path $64BitExePath) {
+    if ($verbose -eq $true) { Write-Host "64-bit Adobe was found." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 64-bit Adobe was found."
+
+    if ($64BitAdminRegKey -ne $null -and $64BitAdminRegKey.'C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe' -eq "RUNASADMIN") {
+    Write-Host "Adobe 64-bit is correctly configured to run as admin for all users."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe 64-bit is correctly configured to run as admin for all users."
+
+    return $true
+    }
+    else {
+      Write-Host "Adobe is not correctly configured to run as admin for all users."
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is not correctly configured to run as admin for all users."
+
+      return $false
+    }
+  }
+  else {
+    # Do a more thorough test to find an exe?
+    Write-Host "Adobe could not be found in its usual install pathway. Adobe is not installed or an old version of Adobe is installed."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") 6Adobe could not be found in its usual install pathway. Adobe is not installed or an old version of Adobe is installed."
+
+    return $false
+  }
+}
+
+function Audit-UCPD {
+  Write-Host "Auditing the UCPD driver..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the UCPD driver..."
+
+  $configured = $false
+
+  # Get the current state of the registry key
+  $UCPDRegistry = Get-ItemProperty -Path “HKLM:\SYSTEM\CurrentControlSet\Services\UCPD” -Name “Start” -ErrorAction SilentlyContinue
+
+  # Set the registry key if it exists. If the key doesn't exist, we shouldn't have to worry about it.
+  if ($UCPDRegistry -and $UCPDRegistry.Start -eq 4) {
+   if ($verbose -eq $true) {  Write-Host "The UCPD driver is configured correctly." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver is configured correctly."
+
+    $configured = $true
+  } elseif ($UCPDRegistry -eq $null) {
+    if ($verbose -eq $true) { Write-Host "The UCPD driver doesn't exist." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver doesn't exist."
+
+    $configured = $true
+  } else {
+    if ($verbose -eq $true) { Write-Host "The UCPD driver is not configured correctly." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver is not configured correctly."
+
+    $configured = $false
+  }
+
+  # Get the current state of the scheduled task.
+  $UCPDTask = Get-ScheduledTask -TaskPath "\Microsoft\Windows\AppxDeploymentClient\" -TaskName "UCPD velocity" -ErrorAction SilentlyContinue
+
+  # Disable the scheduled task if it exists.
+  if ($UCPDTask -and $UCPDTask.State -eq "Disabled" ) {
+    if ($verbose -eq $true) { Write-Host "The UCPD driver scheduled task is configured correctly." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver scheduled task is configured correctly."
+
+    $configured = $true
+  } elseif ($UCPDTask -eq $null) {
+    if ($verbose -eq $true) { Write-Host "The UCPD driver scheduled task doesn't exist." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver scheduled task doesn't exist."
+
+    $configured = $false
+  } else {
+    if ($verbose -eq $true) { Write-Host "The UCPD driver scheduled task is not configured correctly." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver scheduled task is not configured correctly."
+
+    $configured = $false
+  }
+
+  if ($configured -eq $true) {
+    Write-Host "The UCPD driver is configured correctly."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver is configured correctly."
+
+    return $true
+  } else {
+    Write-Host "The UCPD driver is configured correctly."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The UCPD driver is configured correctly."
+
+    return $false
+  }
 }
 
 # Create custom objects for each function
@@ -770,11 +807,15 @@ $adobeEnabledAsAdmin = [PSCustomObject]@{
     Name = "Adobe"
     Value = Audit-Adobe
 }
+$ucpdConfigured = [PSCustomObject]@{
+    Name = "UCPD"
+    Value = Audit-UCPD
+}
 
 # An array of all the above custom objects.
 $auditingArray = @(
   $logFilesCreated, $modernStandbyDisabled, $uacDisabled, $powerOptionsSet, $windowsFirewallDisabled, $timeZoneSet, $servicesConfigured, $fastBootDisabled,
-  $isoMountingDisabled, $networkAdapterConfigured, $usbControllerConfigured, $adobeEnabledAsAdmin
+  $isoMountingDisabled, $networkAdapterConfigured, $usbControllerConfigured, $adobeEnabledAsAdmin, $ucpdConfigured
 )
 
 # Goes through the above array and if the value is false, add that setting to the end results string.
