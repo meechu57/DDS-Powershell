@@ -34,7 +34,7 @@ if ($UCPDRegistry -and $UCPDRegistry.Start -ne 4) {
 }
 
 # Get the current state of the scheduled task.
-$UCPDTask = Get-ScheduledTask -TaskPath "\Microsoft\Windows\AppxDeploymentClient\" -TaskName "UCPD velocity"
+$UCPDTask = Get-ScheduledTask -TaskPath "\Microsoft\Windows\AppxDeploymentClient\" -TaskName "UCPD velocity" -ErrorAction SilentlyContinue
 
 # Disable the scheduled task if it exists.
 if ($UCPDTask -and $UCPDTask.State -ne "Disabled" ) {

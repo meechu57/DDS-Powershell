@@ -62,14 +62,3 @@ if(!(Test-Path "C:\DDS\Logs\Scheduled Automation.log")) {
     Write-Host "Unable to add Scheduled Automation.log to the directory C:\DDS\Logs"
   }
 }
-
-# Checks to see if the Defender.log file exists and creates it if it doesn't
-if(!(Test-Path 'C:\DDS\Logs\Defender.log')) {
-  try {
-    New-Item -ItemType File -Path "C:\DDS\Logs\Defender.log" -Force
-    
-    Write-Host "Added Defender.log to the directory C:\DDS\Logss"
-  } catch {
-    Write-Host "Unable to add Defender.log to the directory C:\DDS\Logs"
-  }
-}
