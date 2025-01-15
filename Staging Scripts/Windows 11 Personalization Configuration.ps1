@@ -7,18 +7,6 @@ switch ($env:scriptRunType) {
   Default { Write-Host "An error occurred when trying to set the log pathway. Setting the log path to the default." ; $logPath = "C:\DDS\Logs\Scripts.log" }
 }
 
-# Check if the script was run as the default System User
-function Test-IsSystem {
-  $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-  return $id.Name -like "NT AUTHORITY*" -or $id.IsSystem
-}
-
-# If it was we'll error out and inform the technician they should run it as the "Current Logged on User"
-if (Test-IsSystem) {
-  Write-Host "This script does not work when run as system. Use Run As: 'Current Logged on User'."
-  exit 1
-}
-
 # Get the operating system version
 $osVersion = (Get-CimInstance Win32_OperatingSystem).Version
 
@@ -31,180 +19,129 @@ if ($osVersion -like "10.0.2*") {
   Write-Host "Configuring the taskbar..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Configuring the taskbar..."
 
-  # Remove Task View button
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
+  Write-Host "Loading Default registry hive."
+  REG LOAD HKLM\Default C:\Users\Default\NTUSER.DAT
 
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "ShowTaskViewButton" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the ShowTaskViewButton registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the ShowTaskViewButton registry key: $_"
+  # Removes Task View from the Taskbar
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
+
+  # Removes Widgets from the Taskbar
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
+
+  # Removes Copilot from the Taskbar
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowCopilotButton" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
+
+  # Removes Chat from the Taskbar
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarMn" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
+
+  # Default StartMenu alignment 0=Left
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarAl" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
+
+  # Default StartMenu pins layout 0=Default, 1=More Pins, 2=More Recommendations
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_Layout" -Value "1" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
+
+  # Removes search from the Taskbar
+  $RegKey = "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\RunOnce"
+  if (-not(Test-Path $RegKey )) {
+    $reg = New-Item $RegKey -Force | Out-Null
+    try { $reg.Handle.Close() } catch {}
   }
-
-  # Remove Widgets
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "TaskbarDa" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the TaskbarDa registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TaskbarDa registry key: $_"
-  }
-
-  # Remove Chat
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "TaskbarMn" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the TaskbarMn registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TaskbarMn registry key: $_"
-  }
-  
-  <# Remove CoPilot
-  try {
-    $keyPath = "HKCU:\Software\Policies\Microsoft\Windows\WindowsCopilot"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "TurnOffWindowsCopilot" -Value 1 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the TurnOffWindowsCopilot registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TurnOffWindowsCopilot registry key: $_"
-  }#>
-
-  # Moves Windows icon to the left
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "TaskbarAl" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the TaskbarAl registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the TaskbarAl registry key: $_"
-  }
-
-  # Removes Search
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Search"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "SearchboxTaskbarMode" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the SearchboxTaskbarMode registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the SearchboxTaskbarMode registry key: $_"
-  }
-
-  #                                                  Start Menu
-  Write-Host "Configuring the start menu..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Configuring the start menu..."
-
-  # Shows more pins on the start menu
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "Start_Layout" -Value 1 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the Start_Layout registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the Start_Layout registry key: $_"
-  }
+  $reg = New-ItemProperty $RegKey -Name "RemoveSearch"  -Value "reg add HKCU\Software\Microsoft\Windows\CurrentVersion\Search /t REG_DWORD /v SearchboxTaskbarMode /d 0 /f" -PropertyType String -Force
+  try { $reg.Handle.Close() } catch {}
 
   # Disables the info tips
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "ShowInfoTip" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the ShowInfoTip registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the ShowInfoTip registry key: $_"
-  }
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowInfoTip" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
 
   # Disables the Iris info tips
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    New-ItemProperty -Path $keyPath -Name "Start_IrisRecommendations" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the Start_IrisRecommendations registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the Start_IrisRecommendations registry key: $_"
-  }
-
-  # Adds Settings and File Explorer to the Start menu
-      
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Start"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-
-      exit 1
-    }
-    reg add "HKCU\Software\Microsoft\Windows\CurrentVersion\Start" /v VisiblePlaces /t REG_BINARY /d 86087352AA5143429F7B2776584659D4BC248A140CD68942A0806ED9BBA24882 /f
-  } catch {
-    Write-Host "Failed to set the VisiblePlaces registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the VisiblePlaces registry key: $_"
-  }
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_IrisRecommendations" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
 
   # Show all file name extensions
-  try {
-    $keyPath = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-    if (-not (Test-Path $keyPath)) {
-      Write-Host "Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! The registry pathway $keyPath doesn't exist. Please manually investigate."
+  $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value "0" -PropertyType Dword -Force
+  try { $reg.Handle.Close() } catch {}
 
-      exit 1
+  # Adds Settings and File Explorer to the Start menu 
+  reg add "HKLM\Default\Software\Microsoft\Windows\CurrentVersion\Start" /v VisiblePlaces /t REG_BINARY /d 86087352AA5143429F7B2776584659D4BC248A140CD68942A0806ED9BBA24882 /f
+
+  Write-Host "Unloading Default registry hive."
+  [GC]::Collect()
+  REG UNLOAD HKLM\Default
+
+  $UserProfiles = Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\*" |
+  Where-Object { $_.PSChildName -match "S-1-5-21-(\d+-?){4}$" } |
+  Select-Object @{Name = "SID"; Expression = { $_.PSChildName } }, @{Name = "UserHive"; Expression = { "$($_.ProfileImagePath)\NTuser.dat" } }
+
+  # Loop through each profile on the machine
+  foreach ($UserProfile in $UserProfiles) {
+    Write-Host "Running for profile: $($UserProfile.UserHive)"
+  
+    # Load User NTUser.dat if it's not already loaded
+    if (($ProfileWasLoaded = Test-Path Registry::HKEY_USERS\$($UserProfile.SID)) -eq $false) {
+      REG LOAD HKU\$($UserProfile.SID) $($UserProfile.UserHive)
     }
-    New-ItemProperty -Path $keyPath -Name "HideFileExt" -Value 0 -PropertyType DWord -Force
-  } catch {
-    Write-Host "Failed to set the HideFileExt registry key: $_"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the HideFileExt registry key: $_"
+  
+    # Removes Task View from the Taskbar
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowTaskViewButton" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Removes Widgets from the Taskbar
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Removes Copilot from the Taskbar
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowCopilotButton" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Removes Chat from the Taskbar
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarMn" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Default StartMenu alignment 0=Left
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarAl" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Default StartMenu pins layout 0=Default, 1=More Pins, 2=More Recommendations
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_Layout" -Value "1" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Disables the info tips
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowInfoTip" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Disables the Iris info tips
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "Start_IrisRecommendations" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Removes search from the Taskbar
+    $RegKey = "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Search"
+    if (-not(Test-Path $RegKey )) {
+        $reg = New-Item $RegKey -Force | Out-Null
+        try { $reg.Handle.Close() } catch {}
+    }
+    $reg = New-ItemProperty $RegKey -Name "SearchboxTaskbarMode" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Show all file name extensions
+    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "HideFileExt" -Value "0" -PropertyType Dword -Force
+    try { $reg.Handle.Close() } catch {}
+  
+    # Adds Settings and File Explorer to the Start menu 
+    reg add "HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Start" /v VisiblePlaces /t REG_BINARY /d 86087352AA5143429F7B2776584659D4BC248A140CD68942A0806ED9BBA24882 /f
+  
+    # Unload NTUser.dat
+    if ($ProfileWasLoaded -eq $false) {
+      [GC]::Collect()
+      Start-Sleep 1
+      REG UNLOAD HKU\$($UserProfile.SID)
+    }
   }
-
-  # Restarts Windows Explorer
-  Stop-Process -Name explorer -Force
-  Start-Sleep -Seconds 2
-  Start-Process explorer
 } 
 else {
   Write-Host "A Windows 11 OS was not found. Aborting the script."
