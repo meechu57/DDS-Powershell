@@ -29,10 +29,6 @@ if ($osVersion -like "10.0.2*") {
   # Removes Widgets from the Taskbar
   $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value "0" -PropertyType Dword -Force
   try { $reg.Handle.Close() } catch {}
-  $reg = New-ItemProperty "HKLM:\Default\SOFTWARE\Microsoft\PolicyManager\default\NewsAndInterests" -Name "AllowNewsAndInterests" -Value "0" -PropertyType Dword -Force
-  try { $reg.Handle.Close() } catch {}
-  $reg = New-ItemProperty "HKLM:\Default\SOFTWARE\Policies\Microsoft\Dsh" -Name "AllowNewsAndInterests" -Value "0" -PropertyType Dword -Force
-  try { $reg.Handle.Close() } catch {}
 
   # Removes Copilot from the Taskbar
   $reg = New-ItemProperty "HKLM:\Default\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "ShowCopilotButton" -Value "0" -PropertyType Dword -Force
@@ -97,10 +93,6 @@ if ($osVersion -like "10.0.2*") {
   
     # Removes Widgets from the Taskbar
     $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value "0" -PropertyType Dword -Force
-    try { $reg.Handle.Close() } catch {}
-    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\SOFTWARE\Microsoft\PolicyManager\default\NewsAndInterests" -Name "AllowNewsAndInterests" -Value "0" -PropertyType Dword -Force
-    try { $reg.Handle.Close() } catch {}
-    $reg = New-ItemProperty "registry::HKEY_USERS\$($UserProfile.SID)\SOFTWARE\Policies\Microsoft\Dsh" -Name "AllowNewsAndInterests" -Value "0" -PropertyType Dword -Force
     try { $reg.Handle.Close() } catch {}
   
     # Removes Copilot from the Taskbar
