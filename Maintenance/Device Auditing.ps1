@@ -583,9 +583,13 @@ function Audit-NicConfiguration {
   if ($errors -gt 0) {
     Write-Host "$errors errors found in the configuration of the NIC(s)."
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors errors found in the configuration of the NIC(s)."
+    
+    return $false
   } else {
     Write-Host "All NIC configurations are correctly audited."
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") All NIC configurations are correctly audited."
+    
+    return $true
   }
 }
 
@@ -758,6 +762,45 @@ function Audit-UCPD {
   }
 }
 
+function Audit-AutoRun {
+  # Get the current value of the NoDriveTypeAutorun key
+  $autorunReg = Get-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -ErrorAction SilentlyContinue
+  # The value we're looking for
+  $value = 0xFF
+  
+  # Set the value or create the NoDriveTypeAutorun key if it doesn't exist or isn't set correctly.
+  if ($autorunReg -and $autorunReg.NoDriveTypeAutorun -eq $value) {
+    Write-Host "Autorun and Autoplay is disabled on all drives."
+  	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Autorun and Autoplay is disabled on all drives."
+  	
+  	return $true
+  } else {
+  	Write-Host "Autorun and Autoplay is not disabled on all drives."
+  	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Autorun and Autoplay is not disabled on all drives."
+  
+  	return $false
+  }
+}
+
+Write-Host "Auditing local users..."
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing local users..."
+
+# Gets the list of local users that are enabled and returns them as a joined string
+function Get-EnabledLocalUserNames {
+    $enabledUserNames = Get-LocalUser | Where-Object { $_.Enabled -eq $true } | Select-Object -ExpandProperty Name
+    $userNamesString = $enabledUserNames -join ', '
+    return $userNamesString
+}
+
+# Get the local users
+$enabledUsersString = Get-EnabledLocalUserNames
+
+if ($verbose -eq $true) { Write-Host "Enabled local user names: $enabledUsersString" }
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Enabled local user names: $enabledUsersString"
+
+# Set the custom field in Ninja
+Ninja-Property-Set localUsers $enabledUsersString
+
 # Create custom objects for each function
 $logFilesCreated = [PSCustomObject]@{
     Name = "Log Files"
@@ -811,11 +854,15 @@ $ucpdConfigured = [PSCustomObject]@{
     Name = "UCPD"
     Value = Audit-UCPD
 }
+$autoRunConfigured = [PSCustomObject]@{
+    Name = "Auto Run"
+    Value = Audit-AutoRun
+}
 
 # An array of all the above custom objects.
 $auditingArray = @(
   $logFilesCreated, $modernStandbyDisabled, $uacDisabled, $powerOptionsSet, $windowsFirewallDisabled, $timeZoneSet, $servicesConfigured, $fastBootDisabled,
-  $isoMountingDisabled, $networkAdapterConfigured, $usbControllerConfigured, $adobeEnabledAsAdmin, $ucpdConfigured
+  $isoMountingDisabled, $networkAdapterConfigured, $usbControllerConfigured, $adobeEnabledAsAdmin, $ucpdConfigured, $autoRunConfigured
 )
 
 # Goes through the above array and if the value is false, add that setting to the end results string.

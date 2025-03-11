@@ -65,8 +65,10 @@ function Enable-PendingReboot {
 
 # Pull the custom field and trim the end of the audit results.
 $auditInput = Ninja-Property-Get auditResults
-$auditInput = $auditInput.Trim()
-$auditInput = $auditInput.TrimEnd(',')
+if ($auditInput -ne $null) {
+  $auditInput = $auditInput.Trim()
+  $auditInput = $auditInput.TrimEnd(',')
+}
 
 # Convert the script variables to local variables
 $override = $env:overrideAuditResults
@@ -141,9 +143,13 @@ $ucpd = [PSCustomObject]@{
     Name = "UCPD"
     Value = 0
 }
+$autoRun = [PSCustomObject]@{
+    Name = "Auto Run"
+    Value = 0
+}
 
 # An array of all the above custom objects.
-$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe, $ucpd)
+$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe, $ucpd, $autoRun)
 
 # Goes through the input array and if the value matches the name in the custom objects above, it will set the value to 1.
 foreach ($input in $auditInput) {
@@ -165,7 +171,7 @@ if ($battery -and $battery.name -notlike "*UPS*") {
   $isLaptop = 1
 }
 
-if ($logFiles.Value -or $override -eq $true) {
+if ($logFiles.Value -eq 1 -or $override -eq $true) {
   # Checks to see if the Scripts.log file exists and creates it if it doesn't
   if(!(Test-Path 'C:\DDS\Logs\Scripts.log')) {
     try {
@@ -233,7 +239,7 @@ if ($logFiles.Value -or $override -eq $true) {
   }
 }
 
-if ($modernStandby.Value -and !$isLaptop) {
+if ($modernStandby.Value -eq 1 -and !$isLaptop) {
   # The registry path where PlatformAoAcOverride exists
   $regPath = "HKLM\SYSTEM\CurrentControlSet\Control\Power"
   
@@ -275,7 +281,7 @@ if ($modernStandby.Value -and !$isLaptop) {
   Enable-PendingReboot
 }
 
-if ($uac.Value -or $override -eq $true) {
+if ($uac.Value -eq 1 -or $override -eq $true) {
   # The registry path where EnableLUA exists
   $regPath = "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
   
@@ -299,7 +305,7 @@ if ($uac.Value -or $override -eq $true) {
   }
 }
 
-if ($powerOptions.Value -or $override -eq $true) {
+if ($powerOptions.Value -eq 1 -or $override -eq $true) {
   # Assigning these as variables for readability purposes
   $usbSubGUID = '2a737441-1930-4402-8d77-b2bebba308a3'
   $usbSelectiveSuspend = '48e6b7a6-50f5-4782-a5d4-53bb8f07e226'
@@ -422,7 +428,7 @@ if ($powerOptions.Value -or $override -eq $true) {
   }
 }
 
-if ($firewall.Value -or $override -eq $true) {
+if ($firewall.Value -eq 1 -or $override -eq $true) {
   # Get the values of the 'Enabled' property for all three firewalls listed in the Get-NetFirewallProfile cmdlet.
   $firewallProfiles = Get-NetFirewallProfile | Select-Object -ExpandProperty Enabled
   
@@ -453,7 +459,7 @@ if ($firewall.Value -or $override -eq $true) {
   }
 }
 
-if ($timeZone.Value -or $override -eq $true) {
+if ($timeZone.Value -eq 1 -or $override -eq $true) {
   # Gets the currently set time zone
   $timeZone = (Get-TimeZone).id
   
@@ -465,7 +471,7 @@ if ($timeZone.Value -or $override -eq $true) {
     # Sets timezone to EST
     try {
      Set-TimeZone -Id 'Eastern Standard Time'
-     
+     w32tm /resync /force
     } catch {
       Write-Host "Failed to set timezone to EST. Current time zone is $($timeZone)"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set timezone to EST. Current time zone is $($timeZone)"
@@ -477,7 +483,7 @@ if ($timeZone.Value -or $override -eq $true) {
   }
 }
 
-if ($services.Value -or $override -eq $true) {
+if ($services.Value -eq 1 -or $override -eq $true) {
   # For error tracking
   $errors = 0
   
@@ -612,7 +618,7 @@ if ($services.Value -or $override -eq $true) {
   }
 }
 
-if ($fastBoot.Value -or $override -eq $true) {
+if ($fastBoot.Value -eq 1 -or $override -eq $true) {
   # The registry path where HiberbootEnabled exists
   $regPath = "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power"
   
@@ -650,7 +656,7 @@ if ($fastBoot.Value -or $override -eq $true) {
   }
 }
 
-if ($isoMounting.Value -or $override -eq $true) {
+if ($isoMounting.Value -eq 1 -or $override -eq $true) {
   # Registry path to disable ISO mounting
   $regPath = "HKCR\Windows.IsoFile\shell\mount"
   
@@ -676,7 +682,7 @@ if ($isoMounting.Value -or $override -eq $true) {
   }
 }
 
-if ($nic.Value -or $override -eq $true) {
+if ($nic.Value -eq 1 -or $override -eq $true) {
   # For error tracking
   $errors = 0
   
@@ -893,7 +899,7 @@ if ($nic.Value -or $override -eq $true) {
   }
 }
 
-if ($usb.Value -or $override -eq $true) { 
+if ($usb.Value -eq 1 -or $override -eq $true) { 
   # For error tracking
   $errors = 0
   
@@ -924,7 +930,7 @@ if ($usb.Value -or $override -eq $true) {
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Finished configuring power settings for all USB devices and controllers with $errors errors."
 }
 
-if ($adobe.Value -or $override -eq $true) {
+if ($adobe.Value -eq 1 -or $override -eq $true) {
   # Path where the Adobe .exe file exists
   $32BitExePath = "C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
   $64BitExePath = "C:\Program Files\Adobe\Acrobat DC\Acrobat\Acrobat.exe"
@@ -1001,7 +1007,7 @@ if ($adobe.Value -or $override -eq $true) {
   }
 }
 
-if ($ucpd.Value -or $override -eq $true) {
+if ($ucpd.Value -eq 1 -or $override -eq $true) {
   Write-Host "Disabling the User Choice Protection Driver..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling the User Choice Protection Driver..."
 
@@ -1038,4 +1044,34 @@ if ($ucpd.Value -or $override -eq $true) {
   }
 
   Enable-PendingReboot
+}
+
+if ($autoRun.Value -eq 1 -or $override -eq $true) {
+  Write-Host "Disabling Autorun and Autoplay on all drives..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Autorun and Autoplay on all drives..."
+  
+  # Get the current value of the NoDriveTypeAutorun key
+  $autorunReg = Get-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -ErrorAction SilentlyContinue
+  # The value we're looking for
+  $value = 0xFF
+  
+  # Set the value or create the NoDriveTypeAutorun key if it doesn't exist or isn't set correctly.
+  if ($autorunReg -and $autorunReg.NoDriveTypeAutorun -ne $value) {
+    try {
+      Set-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -Value $value -Force
+    } catch {
+      Write-Host "Failed to set the NoDriveTypeAutorun registry key: $_"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the NoDriveTypeAutorun registry key: $_"
+    }
+  } elseif (-not $autorunReg) {
+    try {
+      New-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -Value $value -PropertyType DWORD -Force
+    } catch {
+      Write-Host "Failed to set the NoDriveTypeAutorun registry key: $_"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the NoDriveTypeAutorun registry key: $_"
+    }
+  } else {
+  	if ($verbose -eq $true) { Write-Host "Autorun and Autoplay is already disabled on all drives." }
+  	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Autorun and Autoplay is already disabled on all drives."
+  }
 }
