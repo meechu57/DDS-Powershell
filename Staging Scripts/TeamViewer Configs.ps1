@@ -12,10 +12,10 @@ Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Configuri
 
 # Create the registry keys if they don't exist.
 if (-not (Test-Path ("registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\TeamViewer"))) {
-  New-Item -Path "HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\TeamViewer" -Force
+  New-Item -Path "registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\TeamViewer" -Force
 }
 if (-not (Test-Path ("registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\TeamViewer\MsgBoxDontShow"))) {
-  New-Item -Path "HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\TeamViewer\MsgBoxDontShow" -Force
+  New-Item -Path "registry::HKEY_LOCAL_MACHINE\SOFTWARE\WOW6432Node\TeamViewer\MsgBoxDontShow" -Force
 }
 
 # For password length/visibility
@@ -35,10 +35,10 @@ REG LOAD HKLM\Default C:\Users\Default\NTUSER.DAT
 
 # Create the registry keys if they don't exist.
 if (-not (Test-Path ("registry::HKLM\Default\Software\TeamViewer"))) {
-  New-Item -Path "HKLM\Default\Software\TeamViewer" -Force
+  New-Item -Path "registry::HKLM\Default\Software\TeamViewer" -Force
 }
 if (-not (Test-Path ("registry::HKLM\Default\Software\TeamViewer\MsgBoxDontShow"))) {
-  New-Item -Path "HKLM\Default\Software\TeamViewer\MsgBoxDontShow" -Force
+  New-Item -Path "registry::HKLM\Default\Software\TeamViewer\MsgBoxDontShow" -Force
 }
 
 # For message on session end

@@ -140,8 +140,8 @@ $Today = Get-Date
 if ($env:numberOfDaysToReportOn -and $env:numberOfDaysToReportOn -notlike "null") { $NumberOfDays = $env:numberOfDaysToReportOn }
 if ($env:excludeUsers -and $env:excludeUsers -notlike "null") { $excludedUsers = $env:excludeUsers }
 
-Write-Host "Getting inactive users..."
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Getting inactive users..."
+Write-Host "Searching for users that have been inactive for $NumberOfDays days or more."
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Searching for users that have been inactive for $NumberOfDays days or more."
 
 # Pull the list of excluded users and trim them to an array.
 if ($excludedUsers) {
@@ -153,7 +153,6 @@ if ($excludedUsers) {
   $excludedUsers = $excludedUsers -split ","
   $excludedUsers = $excludedUsers.Trim()
 }
-
 
 # Filter through all users, excluding the excluded users, and find all users that are not active or have logged in in the last x days.
 if ($excludedUsers) {
