@@ -765,11 +765,9 @@ function Audit-UCPD {
 function Audit-AutoRun {
   # Get the current value of the NoDriveTypeAutorun key
   $autorunReg = Get-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -ErrorAction SilentlyContinue
-  # The value we're looking for
-  $value = 0xFF
-  
+
   # Set the value or create the NoDriveTypeAutorun key if it doesn't exist or isn't set correctly.
-  if ($autorunReg -and $autorunReg.NoDriveTypeAutorun -eq $value) {
+  if ($autorunReg -and $autorunReg.NoDriveTypeAutorun -eq 0xFF) {
     Write-Host "Autorun and Autoplay is disabled on all drives."
   	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Autorun and Autoplay is disabled on all drives."
   	

@@ -36,7 +36,7 @@ foreach ($scope in $scopes) {
     $percentInUse = [math]::Round($stats.PercentageInUse, 2)
     $availableLeases = $stats.Free
 
-    if (availableLeases -le 10 -or percentInUse -ge 90) {
+    if ($availableLeases -le 15 -or $percentInUse -ge 90) {
         Write-Host "The DHCP scope $($scope.name) is low on leases. The scope is $percentInUse% in use with $availableLeases available leases."
 
         $flag = $true
