@@ -7,9 +7,6 @@ switch ($env:scriptRunType) {
   Default { Write-Host "An error occurred when trying to set the log pathway. Setting the log path to the default." ; $logPath = "C:\DDS\Logs\Scripts.log" }
 }
 
-Write-Host "Disabling Autorun and Autoplay on all drives..."
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Autorun and Autoplay on all drives..."
-
 # Convert the script variable to a local one.
 $option = $env:disableOrEnable
 
@@ -17,6 +14,9 @@ $option = $env:disableOrEnable
 $autorunReg = Get-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -ErrorAction SilentlyContinue
 # The value we're looking for
 if ($option -eq "Disable") {
+  Write-Host "Disabling Autorun and Autoplay on all drives..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Autorun and Autoplay on all drives..."
+  
   # Set the value or create the NoDriveTypeAutorun key if it doesn't exist or isn't set correctly.
   if ($autorunReg -and $autorunReg.NoDriveTypeAutorun -ne 0xFF) {
     try {
@@ -38,16 +38,19 @@ if ($option -eq "Disable") {
     }
   }
 } elseif ($option -eq "Enable") {
-    if ($autorunReg) {
-      try {
-        Clear-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -Force
-      } catch {
-        Write-Host "Failed to set the NoDriveTypeAutorun registry key: $_"
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the NoDriveTypeAutorun registry key: $_"
-        
-        exit 1
-      }
+  Write-Host "Enabling Autorun and Autoplay on all drives..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Enabling Autorun and Autoplay on all drives..."
+  
+  if ($autorunReg) {
+    try {
+      Clear-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -Force
+    } catch {
+      Write-Host "Failed to set the NoDriveTypeAutorun registry key: $_"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the NoDriveTypeAutorun registry key: $_"
+      
+      exit 1
     }
+  }
 } else {
   Write-Host "Invalid option selected on the 'Disable or Enable' drop down menu."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Invalid option selected on the 'Disable or Enable' drop down menu."
