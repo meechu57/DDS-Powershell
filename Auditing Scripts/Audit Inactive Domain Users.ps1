@@ -47,7 +47,7 @@ $numberOfDays = 30
 $maxAge = (Get-Date).AddDays(-$numberOfDays)
 
 # List of users to exclude from the search
-$excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service"
+$excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest"
 
 # Pull the list of excluded users and trim them to an array.
 if ($excludedUsers) {
@@ -59,43 +59,63 @@ if ($excludedUsers) {
   $excludedUsers = $excludedUsers.Trim()
 }
 
-# Filter through all users, excluding the excluded users, and find all users that are not active or have logged in in the last x days.
+# Filter through all users, excluding the excluded users, and add the users that haven't logged in for 30 days to the inactive users list.
 if ($excludedUsers) {
   $users = Get-ADUser -Filter {SamAccountName -ne "administrator"} -Properties SamAccountName, UserPrincipalName, LastLogonDate | Where {$excludedUsers -notcontains $_.SamAccountName}
-    
+
   $inactiveUsers = @()
   
   foreach ($user in $users) {
     if ($user.LastLogonDate -eq $null) {
-        Write-Host "$($user.SamAccountName) has not logged in yet"
-        $inactiveUsers += $user
+      $inactiveUsers += $user
     } elseif ($user.LastLogonDate -le $maxAge) {
-        $inactiveUsers += $user
+      $inactiveUsers += $user
     }
   }
   
-  $inactiveUsers | Select-Object SamAccountName, UserPrincipalName, LastLogonDate
-} 
-
-# Creating a generic list to start assembling the report
-$Report = New-Object System.Collections.Generic.List[string]
-
-# Actual report assembly each section will be print on its own line
-$Report.Add("Inactive users: $(($inactiveUsers | Measure-Object).Count)")
-$Report.Add("Total users: $(($users | Measure-Object).Count)")
-$Report.Add("Percent Inactive: $(if((($users | Measure-Object).Count) -gt 0){[Math]::Round(($inactiveUsers | Measure-Object).Count / (($users | Measure-Object).Count) * 100, 2)}else{0})%")
-
-# Set's up table to use in the report
-$Report.Add($($inactiveUsers | Format-Table | Out-String))
-
-if ($InactiveUsers) {
-  # Exports report to activity log
-  $Report | Write-Host
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $Report"
+  #$inactiveUsers | Select-Object SamAccountName, UserPrincipalName, LastLogonDate
 }
-else {
-  Write-Error "No inactive users found!"
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") No inactive users found!"
-  
-  exit 1
+
+# Convert the script variable to a local variable.
+$disableUsers = $env:disableInactiveUsers
+
+# Arrays for sorting the inactive users.
+$users30Day = @()
+$users60Day = @()
+
+# Go through all inactive users to disable and categorize them.
+foreach ($user in $inactiveUsers) {
+    # Disable the user if specified.
+    if ($disableUsers -eq $true) {
+        $user | Disable-ADAccount
+    }
+    
+    # Sort the users between 
+    if ($user.LastLogonDate) {
+        $daysInactive = ($today - $user.LastLogonDate).Days
+
+        if ($daysInactive -ge 30 -and $daysInactive -lt 60) {
+            $users30Day += $user.SamAccountName
+        }
+        elseif ($daysInactive -ge 60) {
+            $users60Day += $user.SamAccountName
+        }
+    } else {
+        # LastLogonDate is null
+        $users60Day += $user.SamAccountName
+    }
+}
+$users30Day = $users30Day -join ", "
+$users60Day = $users60Day -join ", "
+
+if ($inactiveUsers) {
+    if ($disableUsers) {
+        Write-Host "The folling users have been inactive for more than 30 days and have been disabled: $users30Day"
+        Write-Host "The folling users have been inactive for more than 60 days or have not logged in at all and have been disabled: $users30Day"
+    } else {
+        Write-Host "The folling users have been inactive for more than 30 days: $users30Day"
+        Write-Host "The folling users have been inactive for more than 60 days or have not logged in at all: $users30Day"
+    }
+} else {
+    Write-Host "No inactive users have been found."
 }
