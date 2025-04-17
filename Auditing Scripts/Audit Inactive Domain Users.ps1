@@ -37,6 +37,9 @@ if (-not (Get-Module -ListAvailable -Name ActiveDirectory)) {
   exit 1
 }
 
+Write-Host "Auditing inactive domain users..."
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing inactive domain users..."
+
 # Todays date
 $today = Get-Date
 
@@ -47,11 +50,12 @@ $numberOfDays = 30
 $maxAge = (Get-Date).AddDays(-$numberOfDays)
 
 # List of users to exclude from the search
-$excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest"
+$excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt"
 
 # Pull the list of excluded users and trim them to an array.
 if ($excludedUsers) {
   Write-Host "Ignoring the following users: $excludedUsers"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ignoring the following users: $excludedUsers"
   
   $excludedUsers = $excludedUsers.Trim()
   $excludedUsers = $excludedUsers.TrimEnd(',')
@@ -73,49 +77,52 @@ if ($excludedUsers) {
     }
   }
   
-  #$inactiveUsers | Select-Object SamAccountName, UserPrincipalName, LastLogonDate
-}
+  # $inactiveUsers | Select-Object SamAccountName, UserPrincipalName, LastLogonDate
+} 
 
 # Convert the script variable to a local variable.
 $disableUsers = $env:disableInactiveUsers
-
-# Arrays for sorting the inactive users.
+# Initialize the arrays for reporting. 
 $users30Day = @()
 $users60Day = @()
 
-# Go through all inactive users to disable and categorize them.
-foreach ($user in $inactiveUsers) {
-    # Disable the user if specified.
+# Check to make sure there's inactive users for reporting.
+if ($inactiveUsers.Count -gt 0) {
+  foreach ($user in $inactiveUsers) {
+    # Disable the user if the option was selected.
     if ($disableUsers -eq $true) {
-        $user | Disable-ADAccount
+      Write-Host "Disabling the $($user.SamAccountName) user account..."
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling the $($user.SamAccountName) user account..."
+      $user | Disable-ADAccount
     }
     
-    # Sort the users between 
+    # Sort each inactive user into the two categories.
     if ($user.LastLogonDate) {
-        $daysInactive = ($today - $user.LastLogonDate).Days
-
-        if ($daysInactive -ge 30 -and $daysInactive -lt 60) {
-            $users30Day += $user.SamAccountName
-        }
-        elseif ($daysInactive -ge 60) {
-            $users60Day += $user.SamAccountName
-        }
-    } else {
-        # LastLogonDate is null
+      $daysInactive = ($today - $user.LastLogonDate).Days
+  
+      if ($daysInactive -ge 30 -and $daysInactive -lt 60) {
+        $users30Day += $user.SamAccountName
+      }
+      elseif ($daysInactive -ge 60) {
         $users60Day += $user.SamAccountName
-    }
-}
-$users30Day = $users30Day -join ", "
-$users60Day = $users60Day -join ", "
-
-if ($inactiveUsers) {
-    if ($disableUsers) {
-        Write-Host "The folling users have been inactive for more than 30 days and have been disabled: $users30Day"
-        Write-Host "The folling users have been inactive for more than 60 days or have not logged in at all and have been disabled: $users30Day"
+      }
     } else {
-        Write-Host "The folling users have been inactive for more than 30 days: $users30Day"
-        Write-Host "The folling users have been inactive for more than 60 days or have not logged in at all: $users30Day"
+      # LastLogonDate is null
+      $users60Day += $user.SamAccountName
     }
+  }
+  # Join the arrays into strings.
+  $users30Day = $users30Day -join ", "
+  $users60Day = $users60Day -join ", "
+  
+  Write-Host "The following users have been inactive for over 30 days: $users30Day"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 30 days: "
+  
+  Write-Host "The following users have been inactive for over 60 days: $users60Day"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 60 days: $users60Day"
 } else {
-    Write-Host "No inactive users have been found."
+  Write-Host "No inactive user accounts were found!"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") No inactive user accounts were found!"
+  
+  exit 2
 }

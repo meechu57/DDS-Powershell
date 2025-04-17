@@ -4,19 +4,19 @@ $logPath = "C:\DDS\Logs\Audit.log"
 # Convert the script variable to a local variable.
 $verbose = $env:verbose
 
-# The end result string.
-$results = ""
+# The end result array.
+$results = @()
 
-Write-Host "Running the monthly auditing..."
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Running the monthly auditing..."
+Write-Host "Running the weekly auditing..."
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Running the weekly auditing..."
 
 # Check for a non-battery backup battery. If one is detected, the device is a laptop.
 $isLaptop = 0
 $battery = Get-CimInstance Win32_Battery
 
 if ($battery -and $battery.name -notlike "*UPS*") {
-  Write-Host "Laptop detected, exiting the script..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected, exiting the script..."
+  Write-Host "Laptop detected..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected..."
   
   $isLaptop = 1
 }
@@ -866,9 +866,51 @@ $auditingArray = @(
 # Goes through the above array and if the value is false, add that setting to the end results string.
 foreach ($function in $auditingArray) {
   if ($function.Value -eq $false) {
-    $results = $results + $function.Name + ", "
+    $results += $function.Name
   }
 }
+
+# Get the Maintenance Override custom field & convert it to an array.
+$maintenanceOverride = Ninja-Property-Get maintenanceOverride
+$maintenanceOverride = $maintenanceOverride -split ", "
+# Results array.
+$overrideResults = @()
+
+switch ($maintenanceOverride) {
+    "dec97021-fa02-4adc-821c-abff6e69fefd" { $overrideResults += "Log Files" }
+    "cc84545c-b5a4-42b5-a2ec-1a8469e36e09" { $overrideResults += "Modern Standby" }
+    "10040f90-d273-45dc-8de3-8d4ef8007939" { $overrideResults += "UAC" }
+    "35ec96d4-d9ca-448f-9113-412a032a01c6" { $overrideResults += "Power Options" }
+    "49d6dcb4-1a25-42e0-afa6-d4abaa1af4a0" { $overrideResults += "Windows Firewall(s)" }
+    "06c04c9e-259b-4db1-a876-60889f7519e7" { $overrideResults += "Time Zone" }
+    "328fe778-9fc5-4b8f-bed0-3481693ff6ed" { $overrideResults += "Services" }
+    "4c89cf44-45f8-4556-b9d6-413d639e5152" { $overrideResults += "Fast Boot" }
+    "efc1cc8c-167b-44a2-b528-bfc43836dfa8" { $overrideResults += "ISO Mounting" }
+    "caebe517-0874-45ac-b405-687b9225817e" { $overrideResults += "Network Adapter" }
+    "1d70991b-e9c6-4e74-abea-18e2e1e1d471" { $overrideResults += "USB Controller" }
+    "ff066c00-21ed-4862-948c-adaba98792b6" { $overrideResults += "Adobe" }
+    "e3f52540-7f21-4dc5-9e4d-95e82d7372e4" { $overrideResults += "UCPD" }
+    "9ff1a03d-74aa-4245-8f47-26394654d36d" { $overrideResults += "Auto Run" }
+    Default { $overrideResults += "Unknown Input" }
+}
+
+if ($overrideResults -contains "Unknown Input") {
+  Write-Host "Something went wrong with the Maintenance Override custom field. Exiting the script."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Something went wrong with the Maintenance Override custom field. Exiting the script."
+  
+  exit 1
+} else {
+  # Remove the audit inputs from the results
+  if ($overrideResults -ne $null) {
+    Write-Host "The following results will be excluded due to the Maintenance Overrides: $overrideResults"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following results will be excluded due to the Maintenance Overrides: $overrideResults"
+    
+    $results = $initial | Where-Object { $_ -notin $overrideResults }
+  }
+}
+
+# Join the array into a string.
+$results = $results -join ", "
 
 # Shows what was caught in audit. If nothing was caught, set the results to 'Compliant'.
 if ($results -eq "") {

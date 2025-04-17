@@ -72,40 +72,6 @@ if ($auditInput -ne $null) {
   $auditInput = "Compliant"
 }
 
-# Get the Maintenance Override custom field & convert it to an array.
-$maintenanceOverride = Ninja-Property-Get $env:maintenanceOverride
-$maintenanceOverride = $maintenanceOverride -split ", "
-# Temporary storage variable.
-$results = @()
-
-switch ($maintenanceOverride) {
-    "dec97021-fa02-4adc-821c-abff6e69fefd" { $results += "Log Files" }
-    "cc84545c-b5a4-42b5-a2ec-1a8469e36e09" { $results += "Modern Standby" }
-    "10040f90-d273-45dc-8de3-8d4ef8007939" { $results += "UAC" }
-    "35ec96d4-d9ca-448f-9113-412a032a01c6" { $results += "Power Options" }
-    "49d6dcb4-1a25-42e0-afa6-d4abaa1af4a0" { $results += "Windows Firewall(s)" }
-    "06c04c9e-259b-4db1-a876-60889f7519e7" { $results += "Time Zone" }
-    "328fe778-9fc5-4b8f-bed0-3481693ff6ed" { $results += "Services" }
-    "4c89cf44-45f8-4556-b9d6-413d639e5152" { $results += "Fast Boot" }
-    "efc1cc8c-167b-44a2-b528-bfc43836dfa8" { $results += "ISO Mounting" }
-    "caebe517-0874-45ac-b405-687b9225817e" { $results += "Network Adapter" }
-    "1d70991b-e9c6-4e74-abea-18e2e1e1d471" { $results += "USB Controller" }
-    "ff066c00-21ed-4862-948c-adaba98792b6" { $results += "Adobe" }
-    "e3f52540-7f21-4dc5-9e4d-95e82d7372e4" { $results += "UCPD" }
-    "9ff1a03d-74aa-4245-8f47-26394654d36d" { $results += "Auto Run" }
-    Default { $results += "Unknown Input" }
-}
-
-if ($results -contains "Unknown Input") {
-  Write-Host "Something went wrong with the Maintenance Override custom field. Exiting the script."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Something went wrong with the Maintenance Override custom field. Exiting the script."
-  
-  exit 1
-} else {
-  # Convert the results variable back to the correct one.
-  $maintenanceOverride = $results
-}
-
 # Show what is going to be configured.
 if ($auditInput -eq "Compliant") {
   Write-Host "This device fully is compliant!"
@@ -114,9 +80,6 @@ if ($auditInput -eq "Compliant") {
   Write-Host "The override option was set. Configuring all settings."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The override option was set. Configuring all settings."
 } else {
-  if ($maintenanceOverride -ne $null) {
-    $auditInput = Compare-Object -ReferenceObject $auditInput -DifferenceObject $maintenanceOverride -PassThru
-  }
   Write-Host "The following settings will be configured: $auditInput"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following settings will be configured: $auditInput"
 }
@@ -1100,9 +1063,9 @@ if ($autoRun.Value -eq 1 -or $override -eq $true) {
       
       exit 1
     }
-  } elseif (-not $autorunReg) {
+  } else {
     try {
-      New-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -Value $value -PropertyType DWORD -Force
+      New-ItemProperty -Path “HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\policies\Explorer” -Name “NoDriveTypeAutorun” -Value 0xFF -PropertyType DWORD -Force
     } catch {
       Write-Host "Failed to set the NoDriveTypeAutorun registry key: $_"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the NoDriveTypeAutorun registry key: $_"
