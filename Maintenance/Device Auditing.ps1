@@ -916,8 +916,11 @@ $results = $results -join ", "
 if ($results -eq "") {
   Write-Host "All audits passed. No issues found."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") All audits passed. No issues found."
-  
-  $results = "Compliant"
+  if ($overrideResults -ne $null) {
+    $results = "Compliant - With Override(s)"
+  } else {
+    $results = "Compliant"
+  }
 } else {
   Write-Host "The following settings are not configured properly: $results"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following settings are not configured properly: $results"

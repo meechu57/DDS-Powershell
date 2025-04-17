@@ -74,8 +74,11 @@ if ($auditInput -ne $null) {
 
 # Show what is going to be configured.
 if ($auditInput -eq "Compliant") {
-  Write-Host "This device fully is compliant!"
+  Write-Host "This device is fully compliant!"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") This device is fully compliant!"
+} elseif ($auditInput -eq "Compliant - With Override(s)") {
+  Write-Host "This device is compliant but with manual override(s) set."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") This device is compliant but with manual override(s) set."
 } elseif ($override -eq $true) {
   Write-Host "The override option was set. Configuring all settings."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The override option was set. Configuring all settings."
