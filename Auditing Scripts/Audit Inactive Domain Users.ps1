@@ -108,24 +108,22 @@ if ($currentExcludedUsers -ne $null) {
   $excludedUsers = $excludedUsers -split ', '
 }
 
+Write-Host "Ignoring the following users: $($excludedUsers -join ', ')"
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ignoring the following users: $($excludedUsers -join ', ')"
 
-# Filter through all users, excluding the excluded users, and add the users that haven't logged in for 30 days to the inactive users list.
-if ($excludedUsers) {
-  Write-Host "Ignoring the following users: $($excludedUsers -join ', ')"
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ignoring the following users: $($excludedUsers -join ', ')"
+# Get all current users, excluding users in $excludedUsers
+$users = Get-ADUser -Filter {SamAccountName -ne "administrator"} -Properties SamAccountName, UserPrincipalName, LastLogonDate | Where {$excludedUsers -notcontains $_.SamAccountName}
+# Initialize the array for inactive users
+$inactiveUsers = @()
 
-  $users = Get-ADUser -Filter {SamAccountName -ne "administrator"} -Properties SamAccountName, UserPrincipalName, LastLogonDate | Where {$excludedUsers -notcontains $_.SamAccountName}
-
-  $inactiveUsers = @()
-  
-  foreach ($user in $users) {
-    if ($user.LastLogonDate -eq $null) {
-      $inactiveUsers += $user
-    } elseif ($user.LastLogonDate -le $maxAge) {
-      $inactiveUsers += $user
-    }
+# Add the inactive users that are found in $users.
+foreach ($user in $users) {
+  if ($user.LastLogonDate -eq $null) {
+    $inactiveUsers += $user
+  } elseif ($user.LastLogonDate -le $maxAge) {
+    $inactiveUsers += $user
   }
-} 
+}
 
 # Convert the script variable to a local variable.
 $disableUsers = $env:disableInactiveUsers
@@ -136,6 +134,15 @@ $usersAlreadyDisabled = @()
 
 # Check to make sure there's inactive users for reporting.
 if ($inactiveUsers.Count -gt 0) {
+  # Create a ticket if the inactiveUsers custom field is set to "Yes".
+  $createTicket = Ninja-Property-Get inactiveUsers
+  if ($createTicket -eq "Yes") {
+    Write-Host "Inactive users were found. Creating a ticket..."
+    # Clear the custom field
+    Ninja-Property-Set inactiveUsers ""
+  } else {
+    Write-Host "Inactive users were found but no ticket will be created"
+  }
   foreach ($user in $inactiveUsers) {
     # Add the user to this group if it was already disabled before this script ran.
     if ($user.Enabled -eq $false) {
