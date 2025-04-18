@@ -43,11 +43,8 @@ Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing 
 # Todays date
 $today = Get-Date
 
-# Number of days that we determine to be the max age of a user account before it's inactive.
-$numberOfDays = 30
-
 # Max age that the user can be before being considered inactive in date format.
-$maxAge = (Get-Date).AddDays(-$numberOfDays)
+$maxAge = (Get-Date).AddDays(-30)
 
 # Get any currently excluded user from the inactiveUserOverride custom field
 $currentExcludedUsers = Ninja-Property-Get inactiveUserOverride
@@ -61,49 +58,62 @@ if ($currentExcludedUsers -ne $null) {
   # Sort the  input into an array made from Custom Objects
   foreach ($input in $initialArray) {
     $userParts = $input -split '-'
-  
+    
     $user = [PSCustomObject]@{
       Name   = $userParts[0]
       Days = [int]$userParts[1]
     }
-  
+    
     $userArray += $user
   }
   
   # Decrement the Days count by 30. If the count reaches 0, remove them from the inactiveUserOverride custom field and make sure the script audits the user.
   foreach ($user in $userArray) {
     $user.Days = $user.Days - 30
-    # Alert that the user was removed from the inactiveUserOverride custom field
+    # Alert that the user was removed from the inactiveUserOverride custom field.
     if ($user.Days -le 0) {
       Write-Host "The $($user.Name) user's Inactive User Override has expired. If this user gets flagged as inactive below, please note that it was previously added to the Inactive User Override custom field."
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The $($user.Name) user's Inactive User Override has expired. If this user gets flagged as inactive below, please note that it was previously added to the Inactive User Override custom field."
     }
   }
   
   # Get all users that have a day count over 0.
   $userArray = $userArray | Where-Object { $_.Days -gt 0 }
   
-  # Join the $userArray into a single string and set the value back into the inactiveUserOverride custom field
+  # Join the $userArray into a single string and set the value back into the inactiveUserOverride custom field.
   $overrideOutput = ($userArray | ForEach-Object { "$($_.Name)-$($_.Days)" }) -join ', '
   Ninja-Property-Set inactiveUserOverride $overrideOutput
   
-  # Join just the names from the $userArray for the $excludedUsers variable
-  $nameOnlyOutput = ($userArray | ForEach-Object { $_.Name }) -join ', '
-  
-  # List of users to exclude from the search
-  $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, $nameOnlyOutput" 
+  if ($userArray -ne $null) {
+    # Join just the names from the $userArray for the $excludedUsers variable.
+    $nameOnlyOutput = ($userArray | ForEach-Object { $_.Name }) -join ', '
+    
+    Write-Host "Current Inactive Override User(s): $nameOnlyOutput"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Current Inactive Override User(s): $nameOnlyOutput"
+    
+    # List of users to exclude from the search.
+    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, $nameOnlyOutput" 
+    # Convert the string to an array.
+    $excludedUsers = $excludedUsers -split ', '
+  } else {
+    # List of users to exclude from the search
+    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt"
+    # Convert the string to an array.
+    $excludedUsers = $excludedUsers -split ', '
+  }
 } else {
   # List of users to exclude from the search
   $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt"
+  # Convert the string to an array.
+  $excludedUsers = $excludedUsers -split ', '
 }
 
-# Pull the list of excluded users and trim them to an array.
-if ($excludedUsers) {
-  Write-Host "Ignoring the following users: $excludedUsers"
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ignoring the following users: $excludedUsers"
-}
 
 # Filter through all users, excluding the excluded users, and add the users that haven't logged in for 30 days to the inactive users list.
 if ($excludedUsers) {
+  Write-Host "Ignoring the following users: $($excludedUsers -join ', ')"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ignoring the following users: $($excludedUsers -join ', ')"
+
   $users = Get-ADUser -Filter {SamAccountName -ne "administrator"} -Properties SamAccountName, UserPrincipalName, LastLogonDate | Where {$excludedUsers -notcontains $_.SamAccountName}
 
   $inactiveUsers = @()
@@ -115,8 +125,6 @@ if ($excludedUsers) {
       $inactiveUsers += $user
     }
   }
-  
-  # $inactiveUsers | Select-Object SamAccountName, UserPrincipalName, LastLogonDate
 } 
 
 # Convert the script variable to a local variable.
@@ -161,16 +169,15 @@ if ($inactiveUsers.Count -gt 0) {
   $users60Day = $users60Day -join ", "
   $usersAlreadyDisabled = $usersAlreadyDisabled -join ", "
   
+  # Show the output.
   if ($usersAlreadyDisabled -ne "") {
     Write-Host "The following users were already disabled before this script ran: $usersAlreadyDisabled"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users were already disabled before this script ran: $usersAlreadyDisabled"
   }
-  
   if ($users30Day -ne "") {
     Write-Host "The following users have been inactive for over 30 days: $users30Day"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 30 days: $users30Day"
   }
-  
   if ($users60Day -ne "") {
     Write-Host "The following users have been inactive for over 60 days: $users60Day"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 60 days: $users60Day"
