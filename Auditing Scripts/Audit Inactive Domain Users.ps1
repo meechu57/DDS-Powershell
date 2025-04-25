@@ -60,8 +60,8 @@ if ($currentExcludedUsers -ne $null) {
     $userParts = $input -split '-'
     
     $user = [PSCustomObject]@{
-      Name   = $userParts[0]
-      Days = [int]$userParts[1]
+      Name = $userParts[0]
+      Days = $userParts[1]
     }
     
     $userArray += $user
@@ -69,11 +69,13 @@ if ($currentExcludedUsers -ne $null) {
   
   # Decrement the Days count by 30. If the count reaches 0, remove them from the inactiveUserOverride custom field and make sure the script audits the user.
   foreach ($user in $userArray) {
-    $user.Days = $user.Days - 30
-    # Alert that the user was removed from the inactiveUserOverride custom field.
-    if ($user.Days -le 0) {
-      Write-Host "The $($user.Name) user's Inactive User Override has expired. If this user gets flagged as inactive below, please note that it was previously added to the Inactive User Override custom field."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The $($user.Name) user's Inactive User Override has expired. If this user gets flagged as inactive below, please note that it was previously added to the Inactive User Override custom field."
+    if ($user.Days -ne "Indefinitely") {
+      $user.Days = $user.Days - 30
+      # Alert that the user was removed from the inactiveUserOverride custom field.
+      if ($user.Days -le 0) {
+        Write-Host "The $($user.Name) user's Inactive User Override has expired. If this user gets flagged as inactive below, please note that it was previously added to the Inactive User Override custom field."
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The $($user.Name) user's Inactive User Override has expired. If this user gets flagged as inactive below, please note that it was previously added to the Inactive User Override custom field."
+      }
     }
   }
   
@@ -92,18 +94,18 @@ if ($currentExcludedUsers -ne $null) {
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Current Inactive Override User(s): $nameOnlyOutput"
     
     # List of users to exclude from the search.
-    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, $nameOnlyOutput" 
+    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, DefaultAccount, $nameOnlyOutput" 
     # Convert the string to an array.
     $excludedUsers = $excludedUsers -split ', '
   } else {
     # List of users to exclude from the search
-    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt"
+    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, DefaultAccount"
     # Convert the string to an array.
     $excludedUsers = $excludedUsers -split ', '
   }
 } else {
   # List of users to exclude from the search
-  $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt"
+  $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, DefaultAccount"
   # Convert the string to an array.
   $excludedUsers = $excludedUsers -split ', '
 }
@@ -140,58 +142,57 @@ if ($inactiveUsers.Count -gt 0) {
     Write-Host "Inactive users were found. Creating a ticket..."
     # Clear the custom field
     Ninja-Property-Set inactiveUsers ""
-  } else {
-    Write-Host "Inactive users were found but no ticket will be created"
-  }
-  foreach ($user in $inactiveUsers) {
-    # Add the user to this group if it was already disabled before this script ran.
-    if ($user.Enabled -eq $false) {
-      $usersAlreadyDisabled += $user.SamAccountName
-    }
     
-    # Disable the user if the option was selected.
-    if ($disableUsers -eq $true -and $user.Enabled -eq $true) {
-      Write-Host "Disabling the $($user.SamAccountName) user account..."
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling the $($user.SamAccountName) user account..."
-      $user | Disable-ADAccount
-    }
-    
-    # Sort each inactive user into the two categories.
-    if ($user.LastLogonDate) {
-      $daysInactive = ($today - $user.LastLogonDate).Days
-  
-      if ($daysInactive -ge 30 -and $daysInactive -lt 60) {
-        $users30Day += $user.SamAccountName
+    foreach ($user in $inactiveUsers) {
+      # Add the user to this group if it was already disabled before this script ran.
+      if ($user.Enabled -eq $false) {
+        $usersAlreadyDisabled += $user.SamAccountName
       }
-      elseif ($daysInactive -ge 60) {
+      
+      # Disable the user if the option was selected.
+      if ($disableUsers -eq $true -and $user.Enabled -eq $true) {
+        Write-Host "Disabling the $($user.SamAccountName) user account..."
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling the $($user.SamAccountName) user account..."
+        $user | Disable-ADAccount
+      }
+      
+      # Sort each inactive user into the two categories.
+      if ($user.LastLogonDate) {
+        $daysInactive = ($today - $user.LastLogonDate).Days
+    
+        if ($daysInactive -ge 30 -and $daysInactive -lt 60) {
+          $users30Day += $user.SamAccountName
+        }
+        elseif ($daysInactive -ge 60) {
+          $users60Day += $user.SamAccountName
+        }
+      } else {
+        # LastLogonDate is null
         $users60Day += $user.SamAccountName
       }
-    } else {
-      # LastLogonDate is null
-      $users60Day += $user.SamAccountName
     }
-  }
-  # Join the arrays into strings.
-  $users30Day = $users30Day -join ", "
-  $users60Day = $users60Day -join ", "
-  $usersAlreadyDisabled = $usersAlreadyDisabled -join ", "
-  
-  # Show the output.
-  if ($usersAlreadyDisabled -ne "") {
-    Write-Host "The following users were already disabled before this script ran: $usersAlreadyDisabled"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users were already disabled before this script ran: $usersAlreadyDisabled"
-  }
-  if ($users30Day -ne "") {
-    Write-Host "The following users have been inactive for over 30 days: $users30Day"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 30 days: $users30Day"
-  }
-  if ($users60Day -ne "") {
-    Write-Host "The following users have been inactive for over 60 days: $users60Day"
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 60 days: $users60Day"
+    # Join the arrays into strings.
+    $users30Day = $users30Day -join ", "
+    $users60Day = $users60Day -join ", "
+    $usersAlreadyDisabled = $usersAlreadyDisabled -join ", "
+    
+    # Show the output.
+    if ($usersAlreadyDisabled -ne "") {
+      Write-Host "The following users were already disabled before this script ran: $usersAlreadyDisabled"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users were already disabled before this script ran: $usersAlreadyDisabled"
+    }
+    if ($users30Day -ne "") {
+      Write-Host "The following users have been inactive for over 30 days: $users30Day"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 30 days: $users30Day"
+    }
+    if ($users60Day -ne "") {
+      Write-Host "The following users have been inactive for over 60 days: $users60Day"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users have been inactive for over 60 days: $users60Day"
+    }
+  } else {
+    Write-Host "Inactive users were found but no ticket will be created"
   }
 } else {
   Write-Host "No inactive user accounts were found!"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") No inactive user accounts were found!"
-  
-  exit 2
 }
