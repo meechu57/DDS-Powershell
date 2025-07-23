@@ -447,9 +447,11 @@ function Audit-NicConfiguration {
     $AdvEEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Advanced EEE" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $GE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Green Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $ULPM = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Ultra Low Power Mode" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $speed = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Speed & Duplex").RegistryValue # Should be 0
     $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket # Should be "Disabled"
     $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnPattern # Should be "Disabled"
     $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
+    $linkSpeed = (Get-NetAdapter -Name $NIC.Name).LinkSpeed # Should be '1 Gbps'
     
     # Should be false for IPv6 to be disabled on the NIC
     if($IPv6 -eq $false) {
@@ -541,6 +543,20 @@ function Audit-NicConfiguration {
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not disabled on NIC: $($NIC.Name)."
       $errors++
     }
+    
+    # Should be set to 0 for Speed & Duplex to be set to Auto Negotiation.
+    if ($speed -eq 0) {
+      if ($verbose -eq $true) { Write-Host "Speed & Duplex is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Speed & Duplex is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($speed -eq $null -or $speed -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "Speed & Duplex is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Speed & Duplex is not an option on NIC: $($NIC.Name)."
+    } elseif ($speed -ne 0) {
+      if ($verbose -eq $true) { Write-Host "Speed & Duplex is not correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Speed & Duplex is not correctly configured on NIC: $($NIC.Name)."
+    	
+      $errors++
+    }
 
     # Power Management settings
     if ($powerWoMP -eq "Disabled") {
@@ -576,6 +592,18 @@ function Audit-NicConfiguration {
     } elseif ($powerSaving -ne "Disabled") {
       if ($verbose -eq $true) { Write-Host "Power Management Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+    
+    if ($linkSpeed -eq "1 Gbps") {
+      if ($verbose -eq $true) { Write-Host "The NIC $($NIC.Name) is running at 1 Gbps." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The NIC $($NIC.Name) is running at 1 Gbps."
+    } elseif ($linkSpeed -eq $null) {
+      if ($verbose -eq $true) { Write-Host "Link Speed not found on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Link Speed not found on NIC: $($NIC.Name)."
+    } elseif ($linkSpeed -ne "1 Gbps") {
+      if ($verbose -eq $true) { Write-Host "The NIC $($NIC.Name) is running at 1 Gbps. It's currently running at $linkSpeed." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The NIC $($NIC.Name) is running at 1 Gbps. It's currently running at $linkSpeed."
       $errors++
     }
   }

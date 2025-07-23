@@ -60,8 +60,8 @@ if ($currentExcludedUsers -ne $null) {
     $userParts = $input -split '-'
     
     $user = [PSCustomObject]@{
-      Name = $userParts[0]
-      Days = $userParts[1]
+      Name = ($userParts[0..($userParts.Count - 2)] -join '-')
+      Days = $userParts[($userParts.Count - 1)]
     }
     
     $userArray += $user
@@ -94,18 +94,18 @@ if ($currentExcludedUsers -ne $null) {
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Current Inactive Override User(s): $nameOnlyOutput"
     
     # List of users to exclude from the search.
-    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, DefaultAccount, $nameOnlyOutput" 
+    $excludedUsers = "ddsadmin, Sikkauser, sidexis4service, DefaultAccount, $nameOnlyOutput" 
     # Convert the string to an array.
     $excludedUsers = $excludedUsers -split ', '
   } else {
     # List of users to exclude from the search
-    $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, DefaultAccount"
+    $excludedUsers = "ddsadmin, Sikkauser, sidexis4service, DefaultAccount"
     # Convert the string to an array.
     $excludedUsers = $excludedUsers -split ', '
   }
 } else {
   # List of users to exclude from the search
-  $excludedUsers = "ddsadmin, administrator, Sikkauser, sidexis4service, Guest, krbtgt, DefaultAccount"
+  $excludedUsers = "ddsadmin, Sikkauser, sidexis4service, DefaultAccount"
   # Convert the string to an array.
   $excludedUsers = $excludedUsers -split ', '
 }
@@ -114,7 +114,7 @@ Write-Host "Ignoring the following users: $($excludedUsers -join ', ')"
 Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ignoring the following users: $($excludedUsers -join ', ')"
 
 # Get all current users, excluding users in $excludedUsers
-$users = Get-ADUser -Filter {SamAccountName -ne "administrator"} -Properties SamAccountName, UserPrincipalName, LastLogonDate | Where {$excludedUsers -notcontains $_.SamAccountName}
+$users = Get-ADUser -Filter {SamAccountName -ne "krbtgt"} -Properties * | Where-Object {$_.Description -notlike "Built-in*"} | Where {$excludedUsers -notcontains $_.SamAccountName} | Where-Object {$_.SamAccountName -notlike "QBDataService*"}
 # Initialize the array for inactive users
 $inactiveUsers = @()
 

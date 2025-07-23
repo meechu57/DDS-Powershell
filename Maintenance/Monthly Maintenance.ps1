@@ -865,7 +865,11 @@ if ($nic.Value -eq 1 -or $override -eq $true) {
         if ($verbose -eq $true) { Write-Host "Disabling Wake on Magic Packet on NIC $($NIC.name)..." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Wake on Magic Packet on NIC $($NIC.name)..."
         
-        Set-NetAdapterPowerManagement -Name $NIC.name -WakeOnMagicPacket Disabled
+        $NIC |? {
+          $_.AllowComputerToTurnOffDevice = 'Disabled'
+          $_.DeviceSleepOnDisconnect = 'Disabled'
+        }
+        $NIC | Set-NetAdapterPowerManagement
       } catch {
         Write-Host "An error occurred while disabling Wake on Magic Packet on NIC $($NIC.name): $_"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while disabling Wake on Magic Packet on NIC $($NIC.name): $_"
@@ -978,7 +982,7 @@ if ($adobe.Value -eq 1 -or $override -eq $true) {
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is already configured to run as admin."
     }
   } # Check for the 64-bit version of Adobe.
-  elseif($64BitAdminRegKey.$64BitExePath -eq "RUNASADMIN") {
+  elseif(Test-Path $64BitExePath) {
       # If the registry key doesn't exist, create it.
     if ($64BitAdminRegKey -eq $null -or $64BitAdminRegKey.$64BitExePath -ne "RUNASADMIN") {
       try {

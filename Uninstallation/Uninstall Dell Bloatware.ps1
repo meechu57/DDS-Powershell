@@ -23,6 +23,7 @@ $appsToUninstall = @(
     'Dell SupportAssist Remediation'
     'Dell Trusted Device Agent'
     'Dell Command | Update'
+    'Dell Command | Update for Windows 10'
 )
 
 # The two registry locations where the software would be.

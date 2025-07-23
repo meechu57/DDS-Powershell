@@ -15,6 +15,7 @@ $appsToUninstall = @(
     'Dell Core Services'
     'Dell Digital Delivery Services'
     'Dell Display Manager 2.1'
+    'Dell Display Manager 2.2'
     'Dell Optimizer'
     'Dell Optimizer Core'
     'DellOptimizerUI'
@@ -23,11 +24,10 @@ $appsToUninstall = @(
     'Dell SupportAssist OS Recovery Plugin for Dell Update'
     'Dell SupportAssist Remediation'
     'Dell Trusted Device Agent'
-    'Dell Watchdog Timer'
+    'Dell Trusted Device'
     'Office 16 Click-to-Run Extensibility Component'
     'Office 16 Click-to-Run Licensing Component'
     'Office 16 Click-to-Run Localization Component'
-    'Microsoft 365 - en-us'
     'Microsoft 365 - es-es'
     'Microsoft 365 - fr-fr'
     'Microsoft 365 - pt-br'
@@ -36,22 +36,11 @@ $appsToUninstall = @(
     'Microsoft OneNote - fr-fr'
     'Microsoft OneNote - pt-br'
     'Microsoft OneDrive'
+    'Skype'
 )
  
 # The two registry locations where the software would be.
 $uninstallKeys = 'HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKLM:\SOFTWARE\Wow6432node\Microsoft\Windows\CurrentVersion\Uninstall\*', 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\*'
-
-# Check if the script was run as the default System User
-function Test-IsSystem {
-  $id = [System.Security.Principal.WindowsIdentity]::GetCurrent()
-  return $id.Name -like "NT AUTHORITY*" -or $id.IsSystem
-}
-
-# If it was we'll error out and enform the technician they should run it as the "Current Logged on User"
-if (Test-IsSystem) {
-  Write-Host "This script does not work when ran as system. Use Run As: 'Current Logged on User'."
-  exit 1
-}
 
 # Go through all registry locations.
 foreach ($uKey in $uninstallKeys) {
@@ -59,7 +48,7 @@ foreach ($uKey in $uninstallKeys) {
   foreach ($key in (Get-ItemProperty $uKey)) {
     # Go through all of the app in the uninstall list and try to match them to the current registry key.
     foreach ($app in $appsToUninstall) {
-      if ($app -eq $key.DisplayName) {
+      if ($app -like $key.DisplayName) {
         # If the uninstall string is a MsiExec use the msiexec.exe with the /qn and product code switches. Don't reboot.
         if ($key.UninstallString -like "MsiExec*") {
           Write-Host "Uninstalling $($key.DisplayName)..."
@@ -72,30 +61,23 @@ foreach ($uKey in $uninstallKeys) {
           Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $($key.DisplayName)..."
           Write-Host "Uninstalling the rest of $($key.DisplayName)..."
           & $env:ComSpec /c $key.QuietUninstallString
+        } elseif ($key.DisplayName -eq "Microsoft OneDrive") {
+          Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $($key.DisplayName)..."
+          Write-Host "Uninstalling $($key.DisplayName)..."
+          & $env:ComSpec /c $key.UninstallString "/silent"
         } # For the Microsoft 365 and OneNote applications.
         elseif ($key.DisplayName -like "Microsoft*") {
           Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $($key.DisplayName)..."
           Write-Host "Uninstalling $($key.DisplayName)..."
-          & $env:ComSpec /c $key.UninstallString "DisplayLevel=False"
-        } # For Dell Watchdog Timer. Manually hit enter as the software is dumb and has no silent uninstall switch.
-        elseif ($key.DisplayName -eq 'Dell Watchdog Timer') {
-          Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $($key.DisplayName)..."
-          Write-Host "Uninstalling $($key.DisplayName)..."
-          & $env:ComSpec /c $key.UninstallString
-          Timeout /T 10
-          Add-Type -AssemblyName System.Windows.Forms
-          [System.Windows.Forms.SendKeys]::SendWait("{ENTER}")
+          $UninstallEXE = ($key.UninstallString -split '"')[1]
+          $UninstallArg = ($key.UninstallString -split '"')[2] + " DisplayLevel=False"
+          Start-Process -FilePath $UninstallEXE -ArgumentList $UninstallArg -Wait
         }
-        elseif ($key.DisplayName -eq "Dell Display Manager 2.1" -or $key.DisplayName -eq "Dell Pair") {
+        elseif ($key.DisplayName -eq "Dell Display Manager 2.1" -or $key.DisplayName -eq "Dell Pair" -or $key.DisplayName -eq "Dell Display Manager 2.2") {
           Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $($key.DisplayName)..."
           Write-Host "Uninstalling $($key.DisplayName)..."
           & $env:ComSpec /c $key.UninstallString "/S"
         } # For everything else. Really is only catching the Dell Optimizer right now.
-        elseif ($key.DisplayName -eq "Microsoft OneDrive") {
-          Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $($key.DisplayName)..."
-          Write-Host "Uninstalling $($key.DisplayName)..."
-          & $env:ComSpec /c $key.UninstallString "/silent"
-        }
         else {
           Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Uninstalling $($key.DisplayName)..."
           Write-Host "Uninstalling $($key.DisplayName)..."
