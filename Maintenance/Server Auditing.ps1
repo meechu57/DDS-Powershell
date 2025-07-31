@@ -229,196 +229,105 @@ function Audit-IsoMounting {
 }
 
 function Audit-NicConfiguration {
-  # Get the physical NIC(s). Ignore wireless NICs.
-  $NICs = Get-NetAdapter -Physical | Where-Object {$_.Name -notmatch "Wi-Fi|Wireless"}
-
-  # For error tracking. Should only be incremented if any of the below variables are Null.
-  $errors = 0
-
-  Write-Host "Auditing the configuration of the NIC(s)..."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the configuration of the NIC(s)..."
-
-  # Configure all NIC(s)
-  foreach ($NIC in $NICs) {
-    $IPv6 = (Get-NetAdapterBinding -Name $NIC.Name -ComponentID ms_tcpip6 -ErrorAction SilentlyContinue).Enabled # Should be false
-    $WoMP = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Wake on Magic Packet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-    $WoP = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Wake on pattern match" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-    $EEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Energy Efficient Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-    $AdvEEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Advanced EEE" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-    $GE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Green Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-    $ULPM = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Ultra Low Power Mode" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
-    $speed = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Speed & Duplex").RegistryValue # Should be 0
-    $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket # Should be "Disabled"
-    $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnPattern # Should be "Disabled"
-    $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
-    $linkSpeed = (Get-NetAdapter -Name $NIC.Name).LinkSpeed # Should be '1 Gbps'
-    
-    # Should be false for IPv6 to be disabled on the NIC
-    if($IPv6 -eq $false) {
-      if ($verbose -eq $true) { Write-Host "IPv6 is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($IPv6 -eq $null -or $IPv6 -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "IPv6 is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is not an option on NIC: $($NIC.Name)."
-    } elseif ($IPv6 -ne $false) {
-      if ($verbose -eq $true) { Write-Host "IPv6 is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") IPv6 is not disabled on NIC: $($NIC.Name)."
-      $errors++
-    }
-    
-    # Should be set to 0 for Wake on Magic Packet to be disabled on the NIC.
-    if ($WoMP -eq 0) {
-      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($WoMP -eq $null -or $WoMP -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not an option on NIC: $($NIC.Name)."
-    } elseif ($WoMP -ne 0) {
-      if ($verbose -eq $true) { Write-Host "Wake on Magic Packet is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Magic Packet is not disabled on NIC: $($NIC.Name)."
-      $errors++
-    }
-    
-    # Should be set to 0 for Wake on Pattern Match to be disabled on the NIC.
-    if ($WoP -eq 0) {
-      if ($verbose -eq $true) { Write-Host "Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($WoP -eq $null -or $WoP -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "Wake on Pattern Match is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is not an option on NIC: $($NIC.Name)."
-    } elseif ($WoP -ne 0) {
-      if ($verbose -eq $true) { Write-Host "Wake on Pattern Match is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Wake on Pattern Match is not disabled on NIC: $($NIC.Name)."
-      $errors++
-    }
-    
-    # Should be set to 0 for Energy Efficient Ethernet to be disabled on the NIC.
-    if ($EEE -eq 0) {
-      if ($verbose -eq $true) { Write-Host "Energy Efficient Ethernet is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($EEE -eq $null -or $EEE -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "Energy Efficient Ethernet is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is not an option on NIC: $($NIC.Name)."
-    } elseif ($EEE -ne 0) {
-      if ($verbose -eq $true) { Write-Host "Energy Efficient Ethernet is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Energy Efficient Ethernet is not disabled on NIC: $($NIC.Name)."
-      $errors++
-    }
-    
-    # Should be set to 0 for Advanced EEE to be disabled on the NIC.
-    if ($AdvEEE -eq 0) {
-      if ($verbose -eq $true) { Write-Host "Advanced EEE is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($AdvEEE -eq $null -or $AdvEEE -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "Advanced EEE is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is not an option on NIC: $($NIC.Name)."
-    } elseif ($AdvEEE -ne 0) {
-      if ($verbose -eq $true) { Write-Host "Advanced EEE is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Advanced EEE is not disabled on NIC: $($NIC.Name)."
-      $errors++
-    }
-    
-    # Should be set to 0 for Green Ethernet to be disabled on the NIC.
-    if ($GE -eq 0) {
-      if ($verbose -eq $true) { Write-Host "Green Ethernet is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($GE -eq $null -or $GE -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "Green Ethernet is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is not an option on NIC: $($NIC.Name)."
-    } elseif ($GE -ne 0) {
-      if ($verbose -eq $true) { Write-Host "Green Ethernet is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Green Ethernet is not disabled on NIC: $($NIC.Name)."
-      $errors++
-    }
-    
-    # Should be set to 0 for Ultra Low Power Mode to be disabled on the NIC.
-    if ($ULPM -eq 0) {
-      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($ULPM -eq $null -or $ULPM -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not an option on NIC: $($NIC.Name)."
-    } elseif ($ULPM -ne 0) {
-      if ($verbose -eq $true) { Write-Host "Ultra Low Power Mode is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Ultra Low Power Mode is not disabled on NIC: $($NIC.Name)."
-      $errors++
-    }
-    
-    # Should be set to 0 for Speed & Duplex to be set to Auto Negotiation.
-    if ($speed -eq 0) {
-      if ($verbose -eq $true) { Write-Host "Speed & Duplex is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Speed & Duplex is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($speed -eq $null -or $speed -eq "Unsupported") {
-      if ($verbose -eq $true) { Write-Host "Speed & Duplex is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Speed & Duplex is not an option on NIC: $($NIC.Name)."
-    } elseif ($speed -ne 0) {
-      if ($verbose -eq $true) { Write-Host "Speed & Duplex is not correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Speed & Duplex is not correctly configured on NIC: $($NIC.Name)."
-    	
-      $errors++
+  # Get the NICs
+  $NICs = [PSCustomObject]@{
+    Value = Get-NetAdapter | Where-Object {$_.InterfaceDescription -notmatch 'Remote' -and $_.InterfaceDescription -notmatch 'Microsoft Network Adapter Multiplexor Driver' -and $_.InterfaceDescription -notmatch 'Virtual'}
+    InactiveCount = 0
+    SlowSpeedCount = 0
+    PowerSavingCount = 0
+    Output = ""
     }
 
-    # Power Management settings
-    if ($powerWoMP -eq "Disabled") {
-      if ($verbose -eq $true) { Write-Host "Power Management Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Magic Packet is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($powerWoMP -eq $null) {
-      if ($verbose -eq $true) { Write-Host "Power Management Wake on Magic Packet is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Magic Packet is not an option on NIC: $($NIC.Name)."
-    } elseif ($powerWoMP -ne "Disabled") {
-      if ($verbose -eq $true) { Write-Host "Power Management Wake on Magic Packet is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Magic Packet is not disabled on NIC: $($NIC.Name)."
-      $errors++
+    foreach ($NIC in $NICs.Value) {
+        if ($NIC.status -eq "Up") {
+            $speed = (($NIC.LinkSpeed) -split " ")
+            if ($speed[1] -ne "Gbps") {
+                Write-Host "The NIC '$($NIC.Name)' is running at less than 1 Gbps."
+                $NICs.SlowSpeedCount++
+            }
+        } else {
+            Write-Host "The NIC '$($NIC.Name)' is not active."
+            $NICs.InactiveCount++
+        }
+
+        $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
+        if ($powerSaving -eq $null -or $powerSaving -ne "Disabled") { 
+            Write-Host "Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)"
+            $NICs.PowerSavingCount++
+        } 
     }
 
-    if ($powerWoP -eq "Disabled") {
-      if ($verbose -eq $true) { Write-Host "Power Management Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Pattern Match is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($powerWoP -eq $null) {
-      if ($verbose -eq $true) { Write-Host "Power Management Wake on Pattern Match is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Pattern Match is not an option on NIC: $($NIC.Name)."
-    } elseif ($powerWoP -ne "Disabled") {
-      if ($verbose -eq $true) { Write-Host "Power Management Wake on Pattern Match is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Wake on Pattern Match is not disabled on NIC: $($NIC.Name)."
-      $errors++
+    if ($NICs.InactiveCount -ne 0) {
+        $NICs.Output += " | Inactive NICs: $($NICs.InactiveCount)"
     }
 
-    if ($powerSaving -eq "Disabled") {
-      if ($verbose -eq $true) { Write-Host "Power Management Allow Computer to Turn Off Device is correctly configured on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Allow Computer to Turn Off Device is correctly configured on NIC: $($NIC.Name)."
-    } elseif ($powerSaving -eq $null) {
-      if ($verbose -eq $true) { Write-Host "Power Management Allow Computer to Turn Off Device is not an option on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Allow Computer to Turn Off Device is not an option on NIC: $($NIC.Name)."
-    } elseif ($powerSaving -ne "Disabled") {
-      if ($verbose -eq $true) { Write-Host "Power Management Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Power Management Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)."
-      $errors++
+    if ($NICs.SlowSpeedCount -ne 0) {
+        $NICs.Output += " | NICs with low speeds: $($NICs.SlowSpeedCount)"
     }
-    
-    if ($linkSpeed -eq "1 Gbps") {
-      if ($verbose -eq $true) { Write-Host "The NIC $($NIC.Name) is running at 1 Gbps." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The NIC $($NIC.Name) is running at 1 Gbps."
-    } elseif ($linkSpeed -eq $null) {
-      if ($verbose -eq $true) { Write-Host "Link Speed not found on NIC: $($NIC.Name)." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Link Speed not found on NIC: $($NIC.Name)."
-    } elseif ($linkSpeed -ne "1 Gbps") {
-      if ($verbose -eq $true) { Write-Host "The NIC $($NIC.Name) is running at 1 Gbps. It's currently running at $linkSpeed." }
-      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The NIC $($NIC.Name) is running at 1 Gbps. It's currently running at $linkSpeed."
-      $errors++
-    }
-  }
 
-  if ($errors -gt 0) {
-    Write-Host "$errors errors found in the configuration of the NIC(s)."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") $errors errors found in the configuration of the NIC(s)."
+    if ($NICs.PowerSavingCount -ne 0) {
+        $NICs.Output += " | NICs with power saving enabled: $($NICs.PowerSavingCount)"
+    }
+
+    if ($NICs.InactiveCount -eq 0 -and $NICs.SlowSpeedCount -eq 0 -and $NICs.PowerSavingCount -eq 0) {
+        $NICs.Output = "Compliant"
+    }
+
+    $NICs.Output = ($NICs.Output).TrimStart(" ", "|", " ")
     
-    return $false
-  } else {
-    Write-Host "All NIC configurations are correctly audited."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") All NIC configurations are correctly audited."
+  $nicTeam = [PSCustomObject]@{
+    Value = (Get-NetAdapter | Where-Object {$_.InterfaceDescription -eq "Microsoft Network Adapter Multiplexor Driver"})
+    State = $false
+    Output = ""
+    }
     
-    return $true
-  }
+    if ($nicTeam.Value -ne $null -and $($nicTeam.Value).Status -eq "Up") {
+        $nicTeam.State = $true
+    } elseif ($nicTeam.Value -ne $null -and $($nicTeam.Value).Status -ne "Up") {
+        $nicTeam.State = $false
+        Write-Host "A NIC Team was found but it's currently in a 'Down' state."
+    } else {
+        $nicTeam.State = $false
+    }
+
+    if ($nicTeam.State -eq $true) {
+        $nicTeam.Output = "Active"
+    } else {
+        $nicTeam.Output = "No NIC Team"
+    } 
+
+  # Get the iDRAC config
+  $iDRAC = [PSCustomObject]@{
+      Value = racadm getniccfg
+      State = $false
+      IP = ""
+      Port = ""
+      Output = ""
+      }
+
+    if ($iDRAC.Value[0] -like "ERROR*") {
+        Write-Host "No iDRAC license was found on the server. The iDRAC port is not in use."
+        #Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") No iDRAC license was found on the server. The iDRAC port is not in use."
+    } else {
+        $iDRAC.State = $true
+        $iDRAC.IP = (($iDRAC.Value -match '^IP Address\s+=\s+([\d\.]+)$') -split '=')[1].Trim()
+        $iDRAC.Port = (($iDRAC.Value -match '^NIC Selection\s+=\s+(.*)$') -split '=')[1].Trim()
+        $DHCP = (($iDRAC.Value | Where-Object {$_ -like "DHCP Enabled*"}) -split '=')[1].Trim()
+
+        if ($DHCP -eq 1) {
+            Write-Host "WARNING! DHCP is enabled on the iDRAC Port: $($iDRAC.Port)"
+        }
+    }
+
+    if ($iDRAC.State -eq $true) {
+        $iDRAC.Output = "Active | IP: $($iDRAC.IP) | Port: $($iDRAC.Port)"
+    } else {
+        $iDRAC.Output = "Not Active"
+    }
+    
+  $output = "NICs: $($NICs.Output)`nNIC Team: $($nicTeam.Output)`niDRAC: $($iDRAC.Output)"
+
+    return $output
 }
 
 function Audit-UsbSettings {
@@ -522,10 +431,7 @@ $autoRunConfigured = [PSCustomObject]@{
 }
 
 # An array of all the above custom objects.
-$auditingArray = @(
-  $logFilesCreated, $modernStandbyDisabled, $uacDisabled, $powerOptionsSet, $windowsFirewallDisabled, $timeZoneSet, $servicesConfigured, $fastBootDisabled,
-  $isoMountingDisabled, $networkAdapterConfigured, $usbControllerConfigured, $adobeEnabledAsAdmin, $ucpdConfigured, $autoRunConfigured
-)
+$auditingArray = @( $logFilesCreated, $windowsFirewallDisabled, $timeZoneSet, $servicesConfigured, $isoMountingDisabled, $usbControllerConfigured, $autoRunConfigured )
 
 # Goes through the above array and if the value is false, add that setting to the end results string.
 foreach ($function in $auditingArray) {
@@ -533,6 +439,8 @@ foreach ($function in $auditingArray) {
     $results += $function.Name
   }
 }
+
+$results += "'n'n$($networkAdapterConfigured.Value)"
 
 # Get the Maintenance Override custom field & convert it to an array.
 $maintenanceOverride = Ninja-Property-Get maintenanceOverride
