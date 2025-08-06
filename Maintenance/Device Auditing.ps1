@@ -933,7 +933,7 @@ if ($overrideResults -contains "Unknown Input") {
     Write-Host "The following results will be excluded due to the Maintenance Overrides: $overrideResults"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following results will be excluded due to the Maintenance Overrides: $overrideResults"
     
-    $results = $initial | Where-Object { $_ -notin $overrideResults }
+    $results = $results | Where-Object { $_ -notin $overrideResults }
   }
 }
 

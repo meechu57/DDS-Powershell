@@ -236,98 +236,100 @@ function Audit-NicConfiguration {
     SlowSpeedCount = 0
     PowerSavingCount = 0
     Output = ""
+  }
+
+  foreach ($NIC in $NICs.Value) {
+    if ($NIC.status -eq "Up") {
+      $speed = (($NIC.LinkSpeed) -split " ")
+      if ($speed[1] -ne "Gbps") {
+        Write-Host "The NIC '$($NIC.Name)' is running at less than 1 Gbps."
+        $NICs.SlowSpeedCount++
+      }
+    } else {
+      Write-Host "The NIC '$($NIC.Name)' is not active."
+      $NICs.InactiveCount++
     }
 
-    foreach ($NIC in $NICs.Value) {
-        if ($NIC.status -eq "Up") {
-            $speed = (($NIC.LinkSpeed) -split " ")
-            if ($speed[1] -ne "Gbps") {
-                Write-Host "The NIC '$($NIC.Name)' is running at less than 1 Gbps."
-                $NICs.SlowSpeedCount++
-            }
-        } else {
-            Write-Host "The NIC '$($NIC.Name)' is not active."
-            $NICs.InactiveCount++
-        }
+    $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
+    if ($powerSaving -eq $null -or $powerSaving -ne "Disabled") { 
+      Write-Host "Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)"
+      $NICs.PowerSavingCount++
+    } 
+  }
 
-        $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
-        if ($powerSaving -eq $null -or $powerSaving -ne "Disabled") { 
-            Write-Host "Allow Computer to Turn Off Device is not disabled on NIC: $($NIC.Name)"
-            $NICs.PowerSavingCount++
-        } 
-    }
+  if ($NICs.InactiveCount -ne 0) {
+    $NICs.Output += " | Inactive NICs: $($NICs.InactiveCount)"
+  }
 
-    if ($NICs.InactiveCount -ne 0) {
-        $NICs.Output += " | Inactive NICs: $($NICs.InactiveCount)"
-    }
+  if ($NICs.SlowSpeedCount -ne 0) {
+    $NICs.Output += " | NICs with low speeds: $($NICs.SlowSpeedCount)"
+  }
 
-    if ($NICs.SlowSpeedCount -ne 0) {
-        $NICs.Output += " | NICs with low speeds: $($NICs.SlowSpeedCount)"
-    }
+  if ($NICs.PowerSavingCount -ne 0) {
+    $NICs.Output += " | NICs with power saving enabled: $($NICs.PowerSavingCount)"
+  }
 
-    if ($NICs.PowerSavingCount -ne 0) {
-        $NICs.Output += " | NICs with power saving enabled: $($NICs.PowerSavingCount)"
-    }
+  if ($NICs.InactiveCount -eq 0 -and $NICs.SlowSpeedCount -eq 0 -and $NICs.PowerSavingCount -eq 0) {
+    $NICs.Output = "Compliant"
+  }
 
-    if ($NICs.InactiveCount -eq 0 -and $NICs.SlowSpeedCount -eq 0 -and $NICs.PowerSavingCount -eq 0) {
-        $NICs.Output = "Compliant"
-    }
-
-    $NICs.Output = ($NICs.Output).TrimStart(" ", "|", " ")
+  $NICs.Output = ($NICs.Output).TrimStart(" ", "|", " ")
     
   $nicTeam = [PSCustomObject]@{
     Value = (Get-NetAdapter | Where-Object {$_.InterfaceDescription -eq "Microsoft Network Adapter Multiplexor Driver"})
     State = $false
     Output = ""
-    }
+  }
     
-    if ($nicTeam.Value -ne $null -and $($nicTeam.Value).Status -eq "Up") {
-        $nicTeam.State = $true
-    } elseif ($nicTeam.Value -ne $null -and $($nicTeam.Value).Status -ne "Up") {
-        $nicTeam.State = $false
-        Write-Host "A NIC Team was found but it's currently in a 'Down' state."
-    } else {
-        $nicTeam.State = $false
-    }
+  if ($nicTeam.Value -ne $null -and $($nicTeam.Value).Status -eq "Up") {
+    $nicTeam.State = $true
+  } elseif ($nicTeam.Value -ne $null -and $($nicTeam.Value).Status -ne "Up") {
+    $nicTeam.State = $false
+    Write-Host "A NIC Team was found but it's currently in a 'Down' state."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") A NIC Team was found but it's currently in a 'Down' state."
+  } else {
+    $nicTeam.State = $false
+  }
 
-    if ($nicTeam.State -eq $true) {
-        $nicTeam.Output = "Active"
-    } else {
-        $nicTeam.Output = "No NIC Team"
-    } 
+  if ($nicTeam.State -eq $true) {
+    $nicTeam.Output = "Active"
+  } else {
+    $nicTeam.Output = "No NIC Team"
+  } 
 
   # Get the iDRAC config
   $iDRAC = [PSCustomObject]@{
-      Value = racadm getniccfg
-      State = $false
-      IP = ""
-      Port = ""
-      Output = ""
-      }
+    Value = racadm getniccfg
+    State = $false
+    IP = ""
+    Port = ""
+    Output = ""
+  }
 
-    if ($iDRAC.Value[0] -like "ERROR*") {
-        Write-Host "No iDRAC license was found on the server. The iDRAC port is not in use."
-        #Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") No iDRAC license was found on the server. The iDRAC port is not in use."
-    } else {
-        $iDRAC.State = $true
-        $iDRAC.IP = (($iDRAC.Value -match '^IP Address\s+=\s+([\d\.]+)$') -split '=')[1].Trim()
-        $iDRAC.Port = (($iDRAC.Value -match '^NIC Selection\s+=\s+(.*)$') -split '=')[1].Trim()
-        $DHCP = (($iDRAC.Value | Where-Object {$_ -like "DHCP Enabled*"}) -split '=')[1].Trim()
+  if ($iDRAC.Value[0] -like "ERROR*") {
+    Write-Host "No iDRAC license was found on the server. The iDRAC port is not in use."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") No iDRAC license was found on the server. The iDRAC port is not in use."
+  } else {
+    $iDRAC.State = $true
+    $iDRAC.IP = (($iDRAC.Value -match '^IP Address\s+=\s+([\d\.]+)$') -split '=')[1].Trim()
+    $iDRAC.Port = (($iDRAC.Value -match '^NIC Selection\s+=\s+(.*)$') -split '=')[1].Trim()
+    $DHCP = (($iDRAC.Value | Where-Object {$_ -like "DHCP Enabled*"}) -split '=')[1].Trim()
 
-        if ($DHCP -eq 1) {
-            Write-Host "WARNING! DHCP is enabled on the iDRAC Port: $($iDRAC.Port)"
-        }
+    if ($DHCP -eq 1) {
+      Write-Host "WARNING! DHCP is enabled on the iDRAC Port: $($iDRAC.Port)"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") WARNING! DHCP is enabled on the iDRAC Port: $($iDRAC.Port)"
     }
+  }
 
-    if ($iDRAC.State -eq $true) {
-        $iDRAC.Output = "Active | IP: $($iDRAC.IP) | Port: $($iDRAC.Port)"
-    } else {
-        $iDRAC.Output = "Not Active"
-    }
-    
-  $output = "NICs: $($NICs.Output)`nNIC Team: $($nicTeam.Output)`niDRAC: $($iDRAC.Output)"
+  if ($iDRAC.State -eq $true) {
+    $iDRAC.Output = "Active | IP: $($iDRAC.IP) | Port: $($iDRAC.Port)"
+  } else {
+    $iDRAC.Output = "Not Active"
+  }
+  
+  $output = "NICs:`n$($NICs.Output)`nNIC Team: $($nicTeam.Output)`niDRAC: $($iDRAC.Output)"
 
-    return $output
+  return $output
 }
 
 function Audit-UsbSettings {
@@ -341,27 +343,27 @@ function Audit-UsbSettings {
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing USB power settings..."
   
   # For error tracking
-    $usbErrors = 0
+  $usbErrors = 0
 
-    # Dynamic power devices
-    $powerMgmt = Get-CimInstance -ClassName MSPower_DeviceEnable -Namespace root/WMI
+  # Dynamic power devices
+  $powerMgmt = Get-CimInstance -ClassName MSPower_DeviceEnable -Namespace root/WMI
 
-    # Get all USB devices with dynamic power options
-    $usbDevices = Get-CimInstance -ClassName Win32_PnPEntity |
-        Select-Object Name, @{ Name = "Enable"; Expression = { 
-            $powerMgmt | Where-Object InstanceName -Like "*$($_.PNPDeviceID)*" | Select-Object -ExpandProperty Enable }} |
-                Where-Object { $null -ne $_.Enable -and $_.Enable -eq $true } |  
-                    Where-Object {$_.Name -like "*USB*" -and $_.Name -notlike "*Virtual*"}
-  
-    # Looking to see if the power settings are enabled for the USB devices/controllers
-    foreach ($i in $usbDevices) {
-      if ($i.Name -notlike "*USB GbE*") {
-        if ($verbose -eq $true) { Write-Host "The following USB device isn't properly configured: $($i.Name)" }
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following USB device isn't properly configured: $($i.Name)"
-  
-        $usbErrors++
-      }
+  # Get all USB devices with dynamic power options
+  $usbDevices = Get-CimInstance -ClassName Win32_PnPEntity |
+      Select-Object Name, @{ Name = "Enable"; Expression = { 
+          $powerMgmt | Where-Object InstanceName -Like "*$($_.PNPDeviceID)*" | Select-Object -ExpandProperty Enable }} |
+              Where-Object { $null -ne $_.Enable -and $_.Enable -eq $true } |  
+                  Where-Object {$_.Name -like "*USB*" -and $_.Name -notlike "*Virtual*"}
+
+  # Looking to see if the power settings are enabled for the USB devices/controllers
+  foreach ($i in $usbDevices) {
+    if ($i.Name -notlike "*USB GbE*") {
+      if ($verbose -eq $true) { Write-Host "The following USB device isn't properly configured: $($i.Name)" }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following USB device isn't properly configured: $($i.Name)"
+
+      $usbErrors++
     }
+  }
   
   # If either of the variables are more than 0, 1 or more USB device or controller doesn't have their power option disabled.
   if ($usbErrors -ne 0) {
@@ -385,7 +387,7 @@ function Audit-AutoRun {
   # Set the value or create the NoDriveTypeAutorun key if it doesn't exist or isn't set correctly.
   if ($autorunReg -and $autorunReg.NoDriveTypeAutorun -eq 0xFF) {
     Write-Host "Autorun and Autoplay is disabled on all drives."
-  	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Autorun and Autoplay is disabled on all drives."
+	  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Autorun and Autoplay is disabled on all drives."
   	
   	return $true
   } else {
@@ -398,36 +400,36 @@ function Audit-AutoRun {
 
 # Create custom objects for each function
 $logFilesCreated = [PSCustomObject]@{
-    Name = "Log Files"
-    Value = Audit-LogFiles
+  Name = "Log Files"
+  Value = Audit-LogFiles
 }
 $windowsFirewallDisabled = [PSCustomObject]@{
-    Name = "Windows Firewall(s)"
-    Value = Audit-WindowsFirewall
+  Name = "Windows Firewall(s)"
+  Value = Audit-WindowsFirewall
 }
 $timeZoneSet = [PSCustomObject]@{
-    Name = "Time Zone"
-    Value = Audit-TimeZone
+  Name = "Time Zone"
+  Value = Audit-TimeZone
 }
 $servicesConfigured = [PSCustomObject]@{
-    Name = "Services"
-    Value = Audit-Services
+  Name = "Services"
+  Value = Audit-Services
 }
 $isoMountingDisabled = [PSCustomObject]@{
-    Name = "ISO Mounting"
-    Value = Audit-IsoMounting
+  Name = "ISO Mounting"
+  Value = Audit-IsoMounting
 }
 $networkAdapterConfigured = [PSCustomObject]@{
-    Name = "Network Adapter"
-    Value = Audit-NicConfiguration
+  Name = "Network Adapter"
+  Value = Audit-NicConfiguration
 }
 $usbControllerConfigured = [PSCustomObject]@{
-    Name = "USB Controller"
-    Value = Audit-UsbSettings
+  Name = "USB Controller"
+  Value = Audit-UsbSettings
 }
 $autoRunConfigured = [PSCustomObject]@{
-    Name = "Auto Run"
-    Value = Audit-AutoRun
+  Name = "Auto Run"
+  Value = Audit-AutoRun
 }
 
 # An array of all the above custom objects.
@@ -440,8 +442,6 @@ foreach ($function in $auditingArray) {
   }
 }
 
-$results += "'n'n$($networkAdapterConfigured.Value)"
-
 # Get the Maintenance Override custom field & convert it to an array.
 $maintenanceOverride = Ninja-Property-Get maintenanceOverride
 $maintenanceOverride = $maintenanceOverride -split ", "
@@ -449,21 +449,21 @@ $maintenanceOverride = $maintenanceOverride -split ", "
 $overrideResults = @()
 
 switch ($maintenanceOverride) {
-    "dec97021-fa02-4adc-821c-abff6e69fefd" { $overrideResults += "Log Files" }
-    "cc84545c-b5a4-42b5-a2ec-1a8469e36e09" { $overrideResults += "Modern Standby" }
-    "10040f90-d273-45dc-8de3-8d4ef8007939" { $overrideResults += "UAC" }
-    "35ec96d4-d9ca-448f-9113-412a032a01c6" { $overrideResults += "Power Options" }
-    "49d6dcb4-1a25-42e0-afa6-d4abaa1af4a0" { $overrideResults += "Windows Firewall(s)" }
-    "06c04c9e-259b-4db1-a876-60889f7519e7" { $overrideResults += "Time Zone" }
-    "328fe778-9fc5-4b8f-bed0-3481693ff6ed" { $overrideResults += "Services" }
-    "4c89cf44-45f8-4556-b9d6-413d639e5152" { $overrideResults += "Fast Boot" }
-    "efc1cc8c-167b-44a2-b528-bfc43836dfa8" { $overrideResults += "ISO Mounting" }
-    "caebe517-0874-45ac-b405-687b9225817e" { $overrideResults += "Network Adapter" }
-    "1d70991b-e9c6-4e74-abea-18e2e1e1d471" { $overrideResults += "USB Controller" }
-    "ff066c00-21ed-4862-948c-adaba98792b6" { $overrideResults += "Adobe" }
-    "e3f52540-7f21-4dc5-9e4d-95e82d7372e4" { $overrideResults += "UCPD" }
-    "9ff1a03d-74aa-4245-8f47-26394654d36d" { $overrideResults += "Auto Run" }
-    Default { $overrideResults += "Unknown Input" }
+  "dec97021-fa02-4adc-821c-abff6e69fefd" { $overrideResults += "Log Files" }
+  "cc84545c-b5a4-42b5-a2ec-1a8469e36e09" { $overrideResults += "Modern Standby" }
+  "10040f90-d273-45dc-8de3-8d4ef8007939" { $overrideResults += "UAC" }
+  "35ec96d4-d9ca-448f-9113-412a032a01c6" { $overrideResults += "Power Options" }
+  "49d6dcb4-1a25-42e0-afa6-d4abaa1af4a0" { $overrideResults += "Windows Firewall(s)" }
+  "06c04c9e-259b-4db1-a876-60889f7519e7" { $overrideResults += "Time Zone" }
+  "328fe778-9fc5-4b8f-bed0-3481693ff6ed" { $overrideResults += "Services" }
+  "4c89cf44-45f8-4556-b9d6-413d639e5152" { $overrideResults += "Fast Boot" }
+  "efc1cc8c-167b-44a2-b528-bfc43836dfa8" { $overrideResults += "ISO Mounting" }
+  "caebe517-0874-45ac-b405-687b9225817e" { $overrideResults += "Network Adapter" }
+  "1d70991b-e9c6-4e74-abea-18e2e1e1d471" { $overrideResults += "USB Controller" }
+  "ff066c00-21ed-4862-948c-adaba98792b6" { $overrideResults += "Adobe" }
+  "e3f52540-7f21-4dc5-9e4d-95e82d7372e4" { $overrideResults += "UCPD" }
+  "9ff1a03d-74aa-4245-8f47-26394654d36d" { $overrideResults += "Auto Run" }
+  Default { $overrideResults += "Unknown Input" }
 }
 
 if ($overrideResults -contains "Unknown Input") {
@@ -477,7 +477,7 @@ if ($overrideResults -contains "Unknown Input") {
     Write-Host "The following results will be excluded due to the Maintenance Overrides: $overrideResults"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following results will be excluded due to the Maintenance Overrides: $overrideResults"
     
-    $results = $initial | Where-Object { $_ -notin $overrideResults }
+    $results = $results | Where-Object { $_ -notin $overrideResults }
   }
 }
 
@@ -498,5 +498,8 @@ if ($results -eq "") {
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following settings are not configured properly: $results"
 }
 
+# Add the NIC Configuration results
+$results += "`n`n$($networkAdapterConfigured.Value)"
+
 # Set the custom field.
-Ninja-Property-Set auditResults $results
+Ninja-Property-Set serverAuditResults $results

@@ -7,8 +7,65 @@ switch ($env:scriptRunType) {
   Default { Write-Host "An error occurred when trying to set the log pathway. Setting the log path to the default." ; $logPath = "C:\DDS\Logs\Scripts.log" }
 }
 
+function Enable-PendingReboot {
+    Write-Host "Setting the computer to 'Pending Reboot' state..."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Setting the computer to 'Pending Reboot' state..."
+
+    # Registry keys and pathway
+    $rebootRequiredRegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
+    $keysToCheck = @(
+        "c9f3440f-77ba-40bb-a006-1e67387c6e96",
+        "dce6a540-cc87-4c55-8db6-63af55cfd9fd",
+        "7270ec06-f01f-4cda-8db5-a29207141a43"
+    )
+
+    # Check if the RebootRequired key exists
+    if (Test-Path $rebootRequiredRegPath) {
+      # Check for the three keys above
+      foreach ($key in $keysToCheck) {
+        $value = Get-ItemProperty -Path $rebootRequiredRegPath -Name $key -ErrorAction SilentlyContinue
+    
+        # Set the key to the correct value if it doesn't exist or isn't set properly
+        if ($value -ne 1 -or $value -eq $null) {
+          try {
+            Set-ItemProperty -Path $rebootRequiredRegPath -Name $key -Value 1
+          } catch {
+            Write-Host "An error occurred when setting the value of the registry key $key `n $_"
+            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when setting the value of the registry key $key `n $_"
+
+            exit 1
+          }
+        }
+      }
+    } # Create the RebootRequired key and subkeys if it doesn't exist 
+    else {
+      # Create the RebootRequired key
+      try {
+        New-Item -Path $rebootRequiredRegPath -Force
+      } catch {
+        Write-Host "An error occurred when trying to create the RebootRequired key: $_"
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when trying to create the RebootRequired key: $_"
+
+        exit 1
+      }
+  
+      # Create the subkeys
+      foreach ($key in $keysToCheck) {
+        try {
+          New-ItemProperty -Path $rebootRequiredRegPath -Name $key -PropertyType DWord -Value 1 -Force
+        } catch {
+          Write-Host "An error occurred when setting the value of the registry key $key `n $_"
+          Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when setting the value of the registry key $key `n $_"
+
+          exit 1
+        }
+      }
+    }
+}
+
 # Pull the custom field and trim the end of the audit results.
-$auditInput = Ninja-Property-Get auditResults
+$auditInput = Ninja-Property-Get serverAuditResults
+$auditInput = $auditInput[0]
 if ($auditInput -ne $null) {
   $auditInput = $auditInput.Trim()
   $auditInput = $auditInput.TrimEnd(',')
@@ -43,6 +100,18 @@ $logFiles = [PSCustomObject]@{
     Name = "Log Files"
     Value = 0
 }
+$modernStandby = [PSCustomObject]@{
+    Name = "Modern Standby"
+    Value = 0
+}
+$uac = [PSCustomObject]@{
+    Name = "UAC"
+    Value = 0
+}
+$powerOptions = [PSCustomObject]@{
+    Name = "Power Options"
+    Value = 0
+}
 $firewall = [PSCustomObject]@{
     Name = "Windows Firewall(s)"
     Value = 0
@@ -55,12 +124,28 @@ $services = [PSCustomObject]@{
     Name = "Services"
     Value = 0
 }
+$fastBoot = [PSCustomObject]@{
+    Name = "Fast Boot"
+    Value = 0
+}
 $isoMounting = [PSCustomObject]@{
     Name = "ISO Mounting"
     Value = 0
 }
+$nic = [PSCustomObject]@{
+    Name = "Network Adapter"
+    Value = 0
+}
 $usb = [PSCustomObject]@{
     Name = "USB Controller"
+    Value = 0
+}
+$adobe = [PSCustomObject]@{
+    Name = "Adobe"
+    Value = 0
+}
+$ucpd = [PSCustomObject]@{
+    Name = "UCPD"
     Value = 0
 }
 $autoRun = [PSCustomObject]@{
@@ -69,7 +154,7 @@ $autoRun = [PSCustomObject]@{
 }
 
 # An array of all the above custom objects.
-$auditingArray = @($logFiles, $firewall, $timeZone, $services, $isoMounting, $usb, $autoRun)
+$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe, $ucpd, $autoRun)
 
 # Goes through the input array and if the value matches the name in the custom objects above, it will set the value to 1.
 foreach ($input in $auditInput) {
@@ -78,6 +163,17 @@ foreach ($input in $auditInput) {
       $setting.Value = 1
     }
   }
+}
+
+# Check for a non-battery backup battery. If one is detected, the device is a laptop.
+$isLaptop = 0
+$battery = Get-CimInstance Win32_Battery
+
+if ($battery -and $battery.name -notlike "*UPS*") {
+  if ($verbose -eq $true) { Write-Host "Laptop detected." }
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected."
+  
+  $isLaptop = 1
 }
 
 if ($logFiles.Value -eq 1 -or $override -eq $true) {
@@ -394,6 +490,7 @@ if ($usb.Value -eq 1 -or $override -eq $true) {
   Write-Host "Finished configuring power settings for all USB devices and controllers with $errors errors."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Finished configuring power settings for all USB devices and controllers with $errors errors."
 }
+
 
 if ($autoRun.Value -eq 1 -or $override -eq $true) {
   Write-Host "Disabling Autorun and Autoplay on all drives..."
