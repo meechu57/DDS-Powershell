@@ -100,14 +100,6 @@ $logFiles = [PSCustomObject]@{
     Name = "Log Files"
     Value = 0
 }
-$modernStandby = [PSCustomObject]@{
-    Name = "Modern Standby"
-    Value = 0
-}
-$uac = [PSCustomObject]@{
-    Name = "UAC"
-    Value = 0
-}
 $powerOptions = [PSCustomObject]@{
     Name = "Power Options"
     Value = 0
@@ -124,28 +116,12 @@ $services = [PSCustomObject]@{
     Name = "Services"
     Value = 0
 }
-$fastBoot = [PSCustomObject]@{
-    Name = "Fast Boot"
-    Value = 0
-}
 $isoMounting = [PSCustomObject]@{
     Name = "ISO Mounting"
     Value = 0
 }
-$nic = [PSCustomObject]@{
-    Name = "Network Adapter"
-    Value = 0
-}
 $usb = [PSCustomObject]@{
     Name = "USB Controller"
-    Value = 0
-}
-$adobe = [PSCustomObject]@{
-    Name = "Adobe"
-    Value = 0
-}
-$ucpd = [PSCustomObject]@{
-    Name = "UCPD"
     Value = 0
 }
 $autoRun = [PSCustomObject]@{
@@ -154,7 +130,7 @@ $autoRun = [PSCustomObject]@{
 }
 
 # An array of all the above custom objects.
-$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe, $ucpd, $autoRun)
+$auditingArray = @($logFiles, $powerOptions, $firewall, $timeZone, $services, $isoMounting, $usb, $autoRun)
 
 # Goes through the input array and if the value matches the name in the custom objects above, it will set the value to 1.
 foreach ($input in $auditInput) {
