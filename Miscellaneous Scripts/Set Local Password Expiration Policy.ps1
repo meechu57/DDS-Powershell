@@ -7,6 +7,24 @@ switch ($env:scriptRunType) {
   Default { Write-Host "An error occurred when trying to set the log pathway. Setting the log path to the default." ; $logPath = "C:\DDS\Logs\Scripts.log" }
 }
 
+# Convert script variable to local variable.
+$domainJoinedOverride = $env:overrideDomainJoinedRestriction
+
+# Check to see if the computer is domain joined. Exit the script if it is.
+$domain = (Get-WmiObject Win32_ComputerSystem).Domain
+if ($domain -ne "WORKGROUP") {
+	Write-Host "Warning! You're attempting to run this script on a device that is joined to a domain."
+	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Warning! You're attempting to run this script on a device that is joined to a domain."
+  
+  # Unless overriden, the script will exit if the device is joined to the domain.
+	if ($domainJoinedOverride -ne $true) {
+		Write-Host "Exiting the script..."
+		Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Exiting the script..."
+
+		exit 1
+	}
+}
+
 Write-Host "Attempting to set the Maximum Password Age to Unlimited in local security settings..."
 Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Attempting to set the Maximum Password Age to Unlimited in local security settings..."
 
