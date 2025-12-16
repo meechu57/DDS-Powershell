@@ -162,7 +162,7 @@ if (-not (Test-IsDomainController)) {
 # Download the GPO_Backup.zip file
 try {
   [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-  Invoke-WebRequest -Uri "https://e95e3856-e507-4f6d-9aa7-9abb9731aad4.usrfiles.com/archives/e95e38_f22c7549862a4bc683e519f0093e96e1.zip" -OutFile "$env:temp/GPO_Backup.zip"
+  Invoke-WebRequest -Uri "https://e95e3856-e507-4f6d-9aa7-9abb9731aad4.usrfiles.com/archives/e95e38_0db0b8c572c5480b9782302e86ca4005.zip" -OutFile "$env:temp/GPO_Backup.zip"
 } catch {
   Write-Host "Failed to download the GPO_Backup.zip file: $_"
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to download the GPO_Backup.zip file: $_"
@@ -205,9 +205,10 @@ $importTimeServer = [PSCustomObject]@{ Name = "Time Server"; Value = $env:import
 $importUAC = [PSCustomObject]@{ Name = "User Account Control"; Value = $env:importUserAccountControlGpo }
 $importUPS = [PSCustomObject]@{ Name = "User Profile Settings"; Value = $env:importUserProfileSettingsGpo }
 $importFirewall = [PSCustomObject]@{ Name = "Windows Firewall"; Value = $env:importWindowsFirewallGpo }
+$importHuntressAuditing = [PSCustomObject]@{ Name = "Huntress Auditing"; Value = $env:importHuntressAuditingGpo }
 
 # Combine all custom variables into an array.
-$importArray = @( $importFolderRedirection, $importPowerPlan, $importTimeServer, $importUAC, $importUPS, $importFirewall )
+$importArray = @( $importFolderRedirection, $importPowerPlan, $importTimeServer, $importUAC, $importUPS, $importFirewall, $importHuntressAuditing )
 
 # The array where the GPOs that we'll be importing will go.
 $GPOs = @()
@@ -252,7 +253,7 @@ if ($linkGPOs -eq $true) {
   $linkedGPOs = (Get-Gplink -path $domain).DisplayName
   
   foreach ($GPO in $GPOs) {
-    if ($GPO -eq "Time Server") {
+    if ($GPO -eq "Time Server" -or $GPO -eq "Huntress Auditing") {
       # Include the Domain Controllers OU in the target for Time Server
       $target = "OU=Domain Controllers," + $domain
       # Get the GPOs linked under Domain Controllers
