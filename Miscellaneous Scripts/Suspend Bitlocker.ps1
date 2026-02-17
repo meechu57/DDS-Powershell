@@ -13,31 +13,36 @@ Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Suspendin
 # Pull the current state of Bitlocker
 $cDriveBitlocker = Get-BitLockerVolume -MountPoint "C:"
 
-# If the protection status is on, suspend Bitlocker for 1 reboot.
-if ($cDriveBitlocker.ProtectionStatus -eq "On") {
-	try {
-	  Suspend-BitLocker -MountPoint "C:" -RebootCount 1
-	} catch {
-	  Write-Error "Failed to suspend Bitlocker for the upcoming reboot: $_"
-	  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to suspend Bitlocker for the upcoming reboot: $_"
-	  
-	  Write-Error "The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
-	  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
-
-	  exit 1
-	}
+if ($cDriveBitlocker.VolumeStatus -eq "FullyEncrypted") {
+  # If the protection status is on, suspend Bitlocker for 1 reboot.
+  if ($cDriveBitlocker.ProtectionStatus -eq "On") {
+  	try {
+  	  Suspend-BitLocker -MountPoint "C:" -RebootCount 1
+  	} catch {
+  	  Write-Error "Failed to suspend Bitlocker for the upcoming reboot: $_"
+  	  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to suspend Bitlocker for the upcoming reboot: $_"
+  
+  	  exit 1
+  	}
+  } else {
+  	Write-Host "Bitlocker is either already suspened or is not enabled at all. The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
+  	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Bitlocker is either already suspened or is not enabled at all. The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
+  }
+  
+  # Pull the current state of Bitlocker to ensure that it is indeed suspended.
+  $cDriveBitlocker = Get-BitLockerVolume -MountPoint "C:"
+  
+  # If the protection status is still on, exit the script
+  if ($cDriveBitlocker.ProtectionStatus -eq "On") {
+  	Write-Error "Failed to suspend Bitlocker for the upcoming reboot: $_"
+  	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to suspend Bitlocker for the upcoming reboot: $_"
+  
+  	exit 1
+  } else {
+    Write-Host "Bitlocker was successfully supsended on the C drive for the upcoming reboot. It will be re-enabled after 1 reboot."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Bitlocker was successfully supsended on the C drive for the upcoming reboot. It will be re-enabled after 1 reboot."
+  }  
 } else {
-	Write-Host "Bitlocker is either already suspened or is not enabled at all. The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
-	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Bitlocker is either already suspened or is not enabled at all. The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
-}
-
-# Pull the current state of Bitlocker to ensure that it is indeed suspended.
-$cDriveBitlocker = Get-BitLockerVolume -MountPoint "C:"
-
-# If the protection status is still on, exit the script
-if ($cDriveBitlocker.ProtectionStatus -eq "On") {
-	Write-Error "Failed to suspend Bitlocker for the upcoming reboot: $_"
-	Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to suspend Bitlocker for the upcoming reboot: $_"
-
-	exit 1
+  Write-Host "Bitlocker is not enabled on the C drive."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Bitlocker is not enabled on the C drive."
 }
