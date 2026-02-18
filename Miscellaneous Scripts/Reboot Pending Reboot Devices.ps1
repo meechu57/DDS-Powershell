@@ -43,7 +43,7 @@ foreach($regKey in $regKeysToCheck)
 {
   if(Test-Path -Path $regKey.Key) 
   {
-    Write-Output "The '$($regKey.Name)' key exists."
+    Write-Host "The '$($regKey.Name)' key exists."
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The '$($regKey.Name)' key exists."
     
     $pendingReboot = $true
@@ -66,10 +66,10 @@ if ($pendingReboot -eq $true) {
       try {
         Suspend-BitLocker -MountPoint "C:" -RebootCount 1
       } catch {
-        Write-Error "Failed to suspend Bitlocker for the upcoming reboot: $_"
+        Write-Host "Failed to suspend Bitlocker for the upcoming reboot: $_"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to suspend Bitlocker for the upcoming reboot: $_"
     
-        Write-Error "The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
+        Write-Host "The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The current status of Bitlocker is: VolumeStatus: $($cDriveBitlocker.VolumeStatus) | Protection Status: $($cDriveBitlocker.ProtectionStatus)"
   
         exit 1
@@ -85,7 +85,7 @@ if ($pendingReboot -eq $true) {
 
   # If the protection status is still on, exit the script
   if ($cDriveBitlocker.ProtectionStatus -eq "On") {
-    Write-Error "Failed to suspend Bitlocker for the upcoming reboot: $_"
+    Write-Host "Failed to suspend Bitlocker for the upcoming reboot: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to suspend Bitlocker for the upcoming reboot: $_"
 
     exit 1
@@ -96,16 +96,16 @@ if ($pendingReboot -eq $true) {
   
   # Reboot the server after the specified amount of time.
   try {
-    Write-Error "Restarting in $($time) seconds..."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Restarting in $($time) seconds..."
+    Write-Host "Restarting in $time seconds..."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Restarting in $time seconds..."
     
     shutdown /r /t $time
   } catch {
-    Write-Error "Failed to send the reboot command: $_"
+    Write-Host "Failed to send the reboot command: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to send the reboot command: $_"
 
     exit 1
   }
 } else {
-    Write-Host "No reboot is pending on $($env:COMPUTERNAME)."
+  Write-Host "No reboot is pending on $($env:COMPUTERNAME)."
 }
