@@ -434,6 +434,9 @@ function Audit-NicConfiguration {
 
   # For error tracking. Should only be incremented if any of the below variables are Null.
   $errors = 0
+  
+  # For tracking static IPs
+  $staticIPCount = 0
 
   Write-Host "Auditing the configuration of the NIC(s)..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing the configuration of the NIC(s)..."
@@ -447,6 +450,7 @@ function Audit-NicConfiguration {
     $AdvEEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Advanced EEE" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $GE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Green Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $ULPM = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Ultra Low Power Mode" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $PCI = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "PCI Express Link Power Saving" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $speed = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Speed & Duplex").RegistryValue # Should be 0
     $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket # Should be "Disabled"
     $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnPattern # Should be "Disabled"
@@ -544,6 +548,19 @@ function Audit-NicConfiguration {
       $errors++
     }
     
+    # Should be set to 0 for PCI Express Link Power Saving to be disabled on the NIC.
+    if ($PCI -eq 0) {
+      if ($verbose -eq $true) { Write-Host "PCI Express Link Power Saving is correctly configured on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") PCI Express Link Power Saving is correctly configured on NIC: $($NIC.Name)."
+    } elseif ($ULPM -eq $null -or $ULPM -eq "Unsupported") {
+      if ($verbose -eq $true) { Write-Host "PCI Express Link Power Saving is not an option on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") PCI Express Link Power Saving is not an option on NIC: $($NIC.Name)."
+    } elseif ($ULPM -ne 0) {
+      if ($verbose -eq $true) { Write-Host "PCI Express Link Power Saving is not disabled on NIC: $($NIC.Name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") PCI Express Link Power Saving is not disabled on NIC: $($NIC.Name)."
+      $errors++
+    }
+    
     # Should be set to 0 for Speed & Duplex to be set to Auto Negotiation.
     if ($speed -eq 0) {
       if ($verbose -eq $true) { Write-Host "Speed & Duplex is correctly configured on NIC: $($NIC.Name)." }
@@ -605,6 +622,38 @@ function Audit-NicConfiguration {
       if ($verbose -eq $true) { Write-Host "The NIC $($NIC.Name) is running at 1 Gbps. It's currently running at $linkSpeed." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The NIC $($NIC.Name) is running at 1 Gbps. It's currently running at $linkSpeed."
       $errors++
+    }
+    
+    # If the IP of the NIC is staic and not manual.
+    if ((Get-NetIPAddress -InterfaceAlias $NIC.Name).PrefixOrigin -eq "Manual") {
+      if ($verbose -eq $true) { Write-Host "The NIC $($NIC.name) has a static IP." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The NIC $($NIC.name) has a static IP."
+      
+      $staticIPCount++ 
+    } 
+  }
+  
+  # Set the device tag.
+  if ($staticIPCount -gt 0) {
+    # Set the device tag.
+    if ($tags -match "Static IP") {
+      if ($verbose -eq $true) { Write-Host "The device already has the Static IP device tag." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The device already has the Static IP device tag."
+    } else {
+      if ($verbose -eq $true) { Write-Host "Setting the Static IP device tag..." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Setting the Static IP device tag..."
+      
+      Set-NinjaTag -Name "Static IP"
+    } 
+  } else {
+    if ($verbose -eq $true) { Write-Host "No static IP was found." }
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") No static IP was found."
+    
+    if ($tags -contains "Static IP") {
+      if ($verbose -eq $true) { Write-Host "Removing the Static IP device tag..." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Removing the Static IP device tag..."
+      
+      Remove-NinjaTag -Name "Static IP"
     }
   }
 

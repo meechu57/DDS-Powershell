@@ -8,59 +8,28 @@ switch ($env:scriptRunType) {
 }
 
 function Enable-PendingReboot {
-    Write-Host "Setting the computer to 'Pending Reboot' state..."
-    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Setting the computer to 'Pending Reboot' state..."
-
-    # Registry keys and pathway
-    $rebootRequiredRegPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
-    $keysToCheck = @(
-        "c9f3440f-77ba-40bb-a006-1e67387c6e96",
-        "dce6a540-cc87-4c55-8db6-63af55cfd9fd",
-        "7270ec06-f01f-4cda-8db5-a29207141a43"
-    )
-
-    # Check if the RebootRequired key exists
-    if (Test-Path $rebootRequiredRegPath) {
-      # Check for the three keys above
-      foreach ($key in $keysToCheck) {
-        $value = Get-ItemProperty -Path $rebootRequiredRegPath -Name $key -ErrorAction SilentlyContinue
-    
-        # Set the key to the correct value if it doesn't exist or isn't set properly
-        if ($value -ne 1 -or $value -eq $null) {
-          try {
-            Set-ItemProperty -Path $rebootRequiredRegPath -Name $key -Value 1
-          } catch {
-            Write-Host "An error occurred when setting the value of the registry key $key `n $_"
-            Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when setting the value of the registry key $key `n $_"
-
-            exit 1
-          }
-        }
-      }
-    } # Create the RebootRequired key and subkeys if it doesn't exist 
-    else {
-      # Create the RebootRequired key
-      try {
-        New-Item -Path $rebootRequiredRegPath -Force
-      } catch {
-        Write-Host "An error occurred when trying to create the RebootRequired key: $_"
-        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when trying to create the RebootRequired key: $_"
-
-        exit 1
-      }
+  Write-Host "Setting the computer to 'Pending Reboot' state..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Setting the computer to 'Pending Reboot' state..."
   
-      # Create the subkeys
-      foreach ($key in $keysToCheck) {
-        try {
-          New-ItemProperty -Path $rebootRequiredRegPath -Name $key -PropertyType DWord -Value 1 -Force
-        } catch {
-          Write-Host "An error occurred when setting the value of the registry key $key `n $_"
-          Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when setting the value of the registry key $key `n $_"
-
-          exit 1
-        }
-      }
+  # Registry keys and pathway
+  $regPath = "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\WindowsUpdate\Auto Update\RebootRequired"
+  
+  # Check if the RebootRequired key exists
+  if (Test-Path $regPath) {
+    Write-Host "The computer is already in a pending reboot state."
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The computer is already in a pending reboot state."
+  } # Create the RebootRequired key and subkeys if it doesn't exist 
+  else {
+    # Create the RebootRequired key
+    try {
+      New-Item -Path $regPath -Force | Out-Null
+    } catch {
+      Write-Host "An error occurred when trying to create the RebootRequired key: $_"
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when trying to create the RebootRequired key: $_"
+  
+      exit 1
     }
+  }
 }
 
 # Pull the custom field and trim the end of the audit results.
@@ -705,6 +674,7 @@ if ($nic.Value -eq 1 -or $override -eq $true) {
     $AdvEEE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Advanced EEE" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $GE = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Green Ethernet" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $ULPM = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "Ultra Low Power Mode" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
+    $PCI = (Get-NetAdapterAdvancedProperty -Name $NIC.Name -DisplayName "PCI Express Link Power Saving" -ErrorAction SilentlyContinue).RegistryValue # Should be 0
     $powerWoMP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnMagicPacket # Should be "Disabled"
     $powerWoP = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).WakeOnPattern # Should be "Disabled"
     $powerSaving = (Get-NetAdapterPowerManagement -Name $NIC.Name -ErrorAction SilentlyContinue).AllowComputerToTurnOffDevice # Should be "Disabled"
@@ -851,6 +821,27 @@ if ($nic.Value -eq 1 -or $override -eq $true) {
       } catch {
         Write-Host "An error occurred while configuring Ultra Low Power Mode on NIC $($NIC.name): $_"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while configuring Ultra Low Power Mode on NIC $($NIC.name): $_"
+        
+        $errors++
+      }
+    }
+    
+    # Configure PCI Express Link Power Saving
+    if ($PCI -eq $null) { 
+      if ($verbose -eq $true) { Write-Host "PCI Express Link Power Saving is not an option on NIC $($NIC.name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") PCI Express Link Power Saving is not an option on NIC $($NIC.name)."
+    } elseif ($PCI -eq 0) {
+      if ($verbose -eq $true) { Write-Host "PCI Express Link Power Saving is already disabled on NIC $($NIC.name)." }
+      Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") PCI Express Link Power Saving is already disabled on NIC $($NIC.name)."
+    } else { # Set PCI Express Link Power Saving to disabled
+      try {
+        if ($verbose -eq $true) { Write-Host "Disabling PCI Express Link Power Saving on NIC $($NIC.name)..." }
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling PCI Express Link Power Saving on NIC $($NIC.name)..."
+        
+        Set-NetAdapterAdvancedProperty -Name $NIC.name -DisplayName "PCI Express Link Power Saving" -RegistryValue 0
+      } catch {
+        Write-Host "An error occurred while configuring PCI Express Link Power Saving on NIC $($NIC.name): $_"
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while configuring PCI Express Link Power Saving on NIC $($NIC.name): $_"
         
         $errors++
       }
