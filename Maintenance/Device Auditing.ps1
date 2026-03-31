@@ -430,7 +430,7 @@ function Audit-IsoMounting {
 
 function Audit-NicConfiguration {
   # Get the physical NIC(s). Ignore wireless NICs.
-  $NICs = Get-NetAdapter -Physical | Where-Object {$_.Name -notmatch "Wi-Fi|Wireless"}
+  $NICs = Get-NetAdapter -Physical | Where-Object {$_.Name -notmatch "Wi-Fi|Wireless"} | Where-Object {$_.Status -eq "Up"}
 
   # For error tracking. Should only be incremented if any of the below variables are Null.
   $errors = 0
