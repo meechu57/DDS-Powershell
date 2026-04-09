@@ -29,7 +29,7 @@ foreach ($uKey in $uninstallKeys) {
       $isInstalled = $true
     }
     if ($isInstalled) {
-        break
+      break
     }
   }
 }
@@ -93,7 +93,7 @@ if (!($modules -contains "DellBIOSProvider")) {
   try {
     Install-Module -Name DellBIOSProvider -Force -Scope AllUsers
     
-    Import-Module -name DellBIOSProvider
+    Import-Module -name DellBIOSProvider -force
   } catch {
     Write-Host "An error occured while installing DellBIOSProvider: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occured while installing DellBIOSProvider: $_"
@@ -101,7 +101,7 @@ if (!($modules -contains "DellBIOSProvider")) {
     exit 1
   }
 } else {
-    Import-Module -Name DellBIOSProvider
+    Import-Module -Name DellBIOSProvider -force
 }
 
 # Set the execution policy for this script.
@@ -117,6 +117,7 @@ $errors = 0
 # Check if a BIOS pw is already set.
 $pwSet = (Get-Item -Path DellSmbios:\Security\IsAdminPasswordSet).CurrentValue
 
+# If a PW is already set, we'll need to supply the current password via the script variable. 
 if ($pwSet -eq "True") {
   if ($currentPW -eq $null) {
     Write-Host "There is currently a BIOS password set. Please input the password in the 'Current BIOS Password' script variable."
@@ -124,7 +125,10 @@ if ($pwSet -eq "True") {
 
     exit 1
   }
-
+  
+  Write-Host "A previously set password was found. Using the supplied current password."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") A previously set password was found. Using the supplied current password."
+  
   # Start configuring BIOS settings.
   try {
     Set-Item -Path DellSmbios:\PowerManagement\WakeOnLan "LanOnly" -Password $currentPW
@@ -163,6 +167,15 @@ if ($pwSet -eq "True") {
 
       $errors++
     }
+    
+    try {
+        Set-Item -Path DellSmbios:\PowerManagement\UsbWake "Disabled" -Password $currentPW
+      } catch {
+        Write-Host "An error occurred while setting UsbWake: $_"
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while setting UsbWake: $_"
+
+        $errors++
+      }
   }
 
   try {
@@ -223,6 +236,15 @@ if ($pwSet -eq "True") {
 
         $errors++
       }
+      
+      try {
+        Set-Item -Path DellSmbios:\PowerManagement\UsbWake "Disabled"
+      } catch {
+        Write-Host "An error occurred while setting UsbWake: $_"
+        Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while setting UsbWake: $_"
+
+        $errors++
+      }
     }
 
     try {
@@ -234,9 +256,9 @@ if ($pwSet -eq "True") {
       $errors++
     }
 
-    if ($env:newBiosPassword -eq $true) {
+    if ($newPW) {
       try {
-        Set-Item -Path DellSmbios:\Security\AdminPassword $env:newBiosPassword
+        Set-Item -Path DellSmbios:\Security\AdminPassword $newPW
       } catch {
         Write-Host "An error occurred while setting the BIOS password: $_"
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred while setting the BIOS password: $_"
@@ -246,14 +268,13 @@ if ($pwSet -eq "True") {
     }
 }
 
-if ($errors -and $errors -ne 0) {
+# Show any errors.
+if ($errors) {
   Write-Host "Finished configuring BIOS settings with $errors errors."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Finished configuring BIOS settings with $errors errors."
-} else {
-  Write-Host "Finished configuring BIOS settings with 0 errors."
-  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Finished configuring BIOS settings with 0 errors."
 }
 
+# Reboot if the box was checked.
 if ($reboot -and $reboot -eq $true) {
   Write-Host "Reboot option selected. Rebooting the computer..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Reboot option selected. Rebooting the computer..."
