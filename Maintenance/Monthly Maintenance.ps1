@@ -120,9 +120,13 @@ $autoRun = [PSCustomObject]@{
     Name = "Auto Run"
     Value = 0
 }
+$vss = [PSCustomObject]@{
+    Name = "VSS"
+    Value = 0
+}
 
 # An array of all the above custom objects.
-$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe, $ucpd, $autoRun)
+$auditingArray = @($logFiles, $modernStandby, $uac, $powerOptions,  $firewall, $timeZone, $services, $fastBoot, $isoMounting, $nic, $usb, $adobe, $ucpd, $autoRun, $vss)
 
 # Goes through the input array and if the value matches the name in the custom objects above, it will set the value to 1.
 foreach ($input in $auditInput) {
@@ -136,7 +140,6 @@ foreach ($input in $auditInput) {
 # Check for a non-battery backup battery. If one is detected, the device is a laptop.
 $isLaptop = 0
 $battery = Get-CimInstance Win32_Battery
-
 if ($battery -and $battery.name -notlike "*UPS*") {
   if ($verbose -eq $true) { Write-Host "Laptop detected." }
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Laptop detected."
@@ -144,6 +147,7 @@ if ($battery -and $battery.name -notlike "*UPS*") {
   $isLaptop = 1
 }
 
+# Log File configuration.
 if ($logFiles.Value -eq 1 -or $override -eq $true) {
   # Checks to see if the Scripts.log file exists and creates it if it doesn't
   if(!(Test-Path 'C:\DDS\Logs\Scripts.log')) {
@@ -212,6 +216,7 @@ if ($logFiles.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# Modern Standby configuration.
 if ($modernStandby.Value -eq 1 -and !$isLaptop) {
   # The registry path where PlatformAoAcOverride exists
   $regPath = "HKLM\SYSTEM\CurrentControlSet\Control\Power"
@@ -254,6 +259,7 @@ if ($modernStandby.Value -eq 1 -and !$isLaptop) {
   Enable-PendingReboot
 }
 
+# UAC configuration.
 if ($uac.Value -eq 1 -or $override -eq $true) {
   # The registry path where EnableLUA exists
   $regPath = "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System"
@@ -278,6 +284,7 @@ if ($uac.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# Power settings configuration.
 if ($powerOptions.Value -eq 1 -or $override -eq $true) {
   # Assigning these as variables for readability purposes
   $usbSubGUID = '2a737441-1930-4402-8d77-b2bebba308a3'
@@ -401,6 +408,7 @@ if ($powerOptions.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# Firewall configuration.
 if ($firewall.Value -eq 1 -or $override -eq $true) {
   # Get the values of the 'Enabled' property for all three firewalls listed in the Get-NetFirewallProfile cmdlet.
   $firewallProfiles = Get-NetFirewallProfile | Select-Object -ExpandProperty Enabled
@@ -432,6 +440,7 @@ if ($firewall.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# Time Zone configuration.
 if ($timeZone.Value -eq 1 -or $override -eq $true) {
   # Gets the currently set time zone
   $timeZone = (Get-TimeZone).id
@@ -456,6 +465,7 @@ if ($timeZone.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# Services configuration.
 if ($services.Value -eq 1 -or $override -eq $true) {
   # For error tracking
   $errors = 0
@@ -591,6 +601,7 @@ if ($services.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# Fast Boot.
 if ($fastBoot.Value -eq 1 -or $override -eq $true) {
   # The registry path where HiberbootEnabled exists
   $regPath = "HKLM\SYSTEM\CurrentControlSet\Control\Session Manager\Power"
@@ -629,6 +640,7 @@ if ($fastBoot.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# ISO Mounting.
 if ($isoMounting.Value -eq 1 -or $override -eq $true) {
   # Registry path to disable ISO mounting
   $regPath = "HKCR\Windows.IsoFile\shell\mount"
@@ -655,6 +667,7 @@ if ($isoMounting.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# NIC Configuration.
 if ($nic.Value -eq 1 -or $override -eq $true) {
   # For error tracking
   $errors = 0
@@ -898,6 +911,7 @@ if ($nic.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# USB power settings.
 if ($usb.Value -eq 1 -or $override -eq $true) { 
   # For error tracking
   $errors = 0
@@ -929,6 +943,7 @@ if ($usb.Value -eq 1 -or $override -eq $true) {
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Finished configuring power settings for all USB devices and controllers with $errors errors."
 }
 
+# Set Adobe as administrator.
 if ($adobe.Value -eq 1 -or $override -eq $true) {
   # Path where the Adobe .exe file exists
   $32BitExePath = "C:\Program Files (x86)\Adobe\Acrobat Reader DC\Reader\AcroRd32.exe"
@@ -961,7 +976,7 @@ if ($adobe.Value -eq 1 -or $override -eq $true) {
       
       # Verify that the registry key was added properly
       if ($32BitAdminRegKey.$32BitExePath -eq "RUNASADMIN") {
-        Write-Host "Successfully enabled Adobe to run as administrator for all users."
+        if ($verbose -eq $true) { Write-Host "Successfully enabled Adobe to run as administrator for all users." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Successfully enabled Adobe to run as administrator for all users."
       } else {
         Write-Host "Failed to enable Adobe to run as administrator for all users."
@@ -988,7 +1003,7 @@ if ($adobe.Value -eq 1 -or $override -eq $true) {
   
       # Verify that the registry key was added properly
       if ($64BitAdminRegKey.$64BitExePath -eq "RUNASADMIN") {
-        Write-Host "Successfully enabled Adobe to run as administrator for all users."
+        if ($verbose -eq $true) { Write-Host "Successfully enabled Adobe to run as administrator for all users." }
         Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Successfully enabled Adobe to run as administrator for all users."
       } else {
         Write-Host "Failed to enable Adobe to run as administrator for all users."
@@ -996,7 +1011,7 @@ if ($adobe.Value -eq 1 -or $override -eq $true) {
       }
     }
     else {
-      Write-Host "Adobe is already configured to run as admin."
+      if ($verbose -eq $true) { Write-Host "Adobe is already configured to run as admin." }
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Adobe is already configured to run as admin."
     }
   }
@@ -1006,6 +1021,7 @@ if ($adobe.Value -eq 1 -or $override -eq $true) {
   }
 }
 
+# User Choice Protection Driver
 if ($ucpd.Value -eq 1 -or $override -eq $true) {
   Write-Host "Disabling the User Choice Protection Driver..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling the User Choice Protection Driver..."
@@ -1045,6 +1061,7 @@ if ($ucpd.Value -eq 1 -or $override -eq $true) {
   Enable-PendingReboot
 }
 
+# Autorun & Autoplay
 if ($autoRun.Value -eq 1 -or $override -eq $true) {
   Write-Host "Disabling Autorun and Autoplay on all drives..."
   Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Disabling Autorun and Autoplay on all drives..."
@@ -1058,8 +1075,6 @@ if ($autoRun.Value -eq 1 -or $override -eq $true) {
     } catch {
       Write-Host "Failed to set the NoDriveTypeAutorun registry key: $_"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the NoDriveTypeAutorun registry key: $_"
-      
-      exit 1
     }
   } else {
     try {
@@ -1068,5 +1083,17 @@ if ($autoRun.Value -eq 1 -or $override -eq $true) {
       Write-Host "Failed to set the NoDriveTypeAutorun registry key: $_"
       Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to set the NoDriveTypeAutorun registry key: $_"
     }
+  }
+}
+
+# Volume Shadow Copy Storage configuration.
+if ($vss.Value -eq 1 -or $override -eq $true) {
+  Write-Host "Configuring Volume Shadow Copy Storage to 10%..."
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Configuring Volume Shadow Copy Storage to 10%..."
+
+  $output = vssadmin resize shadowstorage /for=C: /on=C: /maxsize=10% 2>&1
+  if ($output -notcontains 'Successfully resized the shadow copy storage association') {
+    Write-Host "Failed to resize shadow storage. Output: $output"
+    Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Failed to resize shadow storage. Output: $output"
   }
 }
