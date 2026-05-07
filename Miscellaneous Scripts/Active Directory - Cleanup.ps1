@@ -169,10 +169,11 @@ foreach ($user in $users) {
   }
 }
 
-# Move each active user to the office's OU. To-Do: Change $users to $activeUsers
-Write-Host "Moving the following users to the '$officeOUName' 'Users' OU: $($users.Name)"
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Moving the following users to the '$officeOUName' 'Users' OU: $users"
-foreach ($user in $users) { 
+# Move each active user to the office's OU.
+$activeUserNames = ($activeUsers.Name) -join ", "
+Write-Host "Moving the following users to the '$officeOUName' 'Users' OU: $activeUserNames"
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Moving the following users to the '$officeOUName' 'Users' OU: $activeUserNames"
+foreach ($user in $activeUsers) { 
   try {
     Move-ADObject -Identity $user.DistinguishedName -TargetPath "OU=Users,OU=$officeOUName,DC=$($domain[0]),DC=$($domain[1])"  
   } catch {
@@ -196,14 +197,26 @@ foreach ($computer in $computers) {
   }
 }
 
-# Move each computers user to the office's OU. To-Do: Change $computers to $activeComputers
-Write-Host "Moving the following computers to the '$officeOUName' 'Computers' OU: $($computers.Name)"
-Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Moving the following computers to the '$officeOUName' 'Computers' OU: $activeComputers"
-foreach ($computer in $computers) { 
+# Move each computers user to the office's OU.
+$activeComputerNames = ($activeComputers.Name) -join ", "
+Write-Host "Moving the following computers to the '$officeOUName' 'Computers' OU: $activeComputerNames"
+Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Moving the following computers to the '$officeOUName' 'Computers' OU: $activeComputerNames"
+foreach ($computer in $activeComputers) { 
   try {
     Move-ADObject -Identity $computer.DistinguishedName -TargetPath "OU=Computers,OU=$officeOUName,DC=$($domain[0]),DC=$($domain[1])"   
   } catch {
     Write-Host "An error occurred when moving the '$computer' user to the '$officeOUName' 'Computers' OU: $_"
     Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") An error occurred when moving the '$computer' user to the '$officeOUName' 'Computers' OU: $_"
   }
+}
+
+if ($inactiveUsers -ne $null) {
+  $inactiveUserNames = ($inactiveUsers.Name) -join ", "
+  Write-Host "The following users were marked as inactive and weren't moved: $inactiveUserNames"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following users were marked as inactive and weren't moved: $inactiveUserNames"
+}
+if ($inactiveComputers -ne $null) {
+  $inactiveComputerNames = ($inactiveComputers.Name) -join ", "
+  Write-Host "The following computers were marked as inactive and weren't moved: $inactiveComputerNames"
+  Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") The following computers were marked as inactive and weren't moved: $inactiveComputerNames"
 }
