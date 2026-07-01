@@ -83,7 +83,7 @@ if ($osVersion -like "10.0.2*") {
     Write-Host "Running for profile: $($UserProfile.UserHive)"
   
     # Load User NTUser.dat if it's not already loaded
-    if (($ProfileWasLoaded = Test-Path Registry::HKEY_USERS\$($UserProfile.SID)) -eq $false) {
+    if ((Test-Path Registry::HKEY_USERS\$($UserProfile.SID)) -eq $false) {
       REG LOAD HKU\$($UserProfile.SID) $($UserProfile.UserHive)
     }
   

@@ -9,14 +9,23 @@ Write-Host "Auditing Folder Redirection$(if ($showMappedDrives) { ' and Mapped D
 Add-Content -Path $logPath -Value "$(Get-Date -UFormat "%Y/%m/%d %T:") Auditing Folder Redirection$(if ($showMappedDrives) { ' and Mapped Drives' })..."
 
 # Grabs the last logged in user via the registry.
+$logonUI = Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -ErrorAction SilentlyContinue
+$profileImagePath = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$($logonUI.LastLoggedOnUserSID)" -Name ProfileImagePath -ErrorAction SilentlyContinue).ProfileImagePath
 $lastLoggedInUser = [PSCustomObject]@{
-  User = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name LastLoggedOnUser -ErrorAction SilentlyContinue).LastLoggedOnUser
-  DisplayName = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name LastLoggedOnDisplayName -ErrorAction SilentlyContinue).LastLoggedOnDisplayName
-  SID = (Get-ItemProperty -Path "Registry::HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows\CurrentVersion\Authentication\LogonUI" -Name LastLoggedOnUserSID -ErrorAction SilentlyContinue).LastLoggedOnUserSID
+  User        = $logonUI.LastLoggedOnUser
+  DisplayName = $logonUI.LastLoggedOnDisplayName
+  SID         = $logonUI.LastLoggedOnUserSID
+  UserHive    = "$profileImagePath\NTuser.dat"
 }
 
 # Path to Folder Redirection registry location for this user
 $regPath = "Registry::HKEY_USERS\$($lastLoggedInUser.SID)\Software\Microsoft\Windows\CurrentVersion\Explorer\User Shell Folders"
+
+# Load User NTUser.dat if it's not already loaded
+if ((Test-Path Registry::HKEY_USERS\$($lastLoggedInUser.SID)) -eq $false) {
+  REG LOAD HKU\$($lastLoggedInUser.SID) $($lastLoggedInUser.UserHive)
+  $loaded = 1
+}
 
 # Name of the computer's domain.
 $domainName = (Get-CimInstance -ClassName Win32_ComputerSystem).Domain
@@ -92,6 +101,13 @@ if (Test-Path $regPath) {
   # Show the results and set the custom field.
   $results
   Ninja-Property-Set folderRedirectionAudit ($results -join "`n")
+
+  # Unload the User NTUser.dat if it was loaded previously.
+  if ($loaded -eq 1) {
+    [GC]::Collect()
+    Start-Sleep 1
+    REG UNLOAD HKU\$($lastLoggedInUser.SID)
+  }
 } 
 else {
   Write-Host "Couldn't find the $regPath registry pathway."
